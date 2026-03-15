@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local artifacts / generated files
+models/*.pkl
+
+# Local datasets (keep folder structure, ignore raw data files)
+data/raw/*.csv
+
+# Temporary files
+*tempCodeRunnerFile*
