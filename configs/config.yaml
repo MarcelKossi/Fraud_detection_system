@@ -1,0 +1,28 @@
+# Single source of truth for data handling, splitting and evaluation.
+# Every experiment script reads this file; no value below is hard-coded elsewhere.
+
+seed: 42
+
+data:
+  raw_path: data/raw/creditcard.csv
+  # SHA-256 of the original creditcard.csv; the loader refuses any other file.
+  sha256: 76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89
+  target: Class
+  time_column: Time
+
+split:
+  # The last `test_fraction` of the time-ordered, de-duplicated transactions is the hold-out set.
+  test_fraction: 0.2
+  # Expanding-window cross-validation on the remaining development set.
+  n_cv_folds: 4
+
+evaluation:
+  threshold: 0.5
+  max_fpr: 0.001
+  bootstrap_resamples: 1000
+  confidence_level: 0.95
+
+baseline_model:
+  n_estimators: 100
+
+results_dir: results

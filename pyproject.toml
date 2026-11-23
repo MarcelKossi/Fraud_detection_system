@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fraud-detection"
+version = "0.2.0.dev0"
+description = "Credit card fraud detection: reproducible training, evaluation and serving."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "TAMPLARE K. Marcel" }]
+dependencies = [
+    "numpy==2.4.3",
+    "pandas==2.3.3",
+    "scikit-learn==1.8.0",
+    "joblib==1.5.3",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+api = ["fastapi==0.135.1", "uvicorn==0.41.0", "pydantic==2.12.5"]
+dashboard = ["streamlit==1.55.0", "requests==2.32.5"]
+viz = ["matplotlib==3.10.8", "seaborn==0.13.2"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "scripts", "tests"]
+# Legacy serving code and notebooks are excluded until they are rewritten.
+extend-exclude = ["notebooks", "api", "dashboard"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
