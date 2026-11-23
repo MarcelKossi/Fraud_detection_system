@@ -25,4 +25,18 @@ evaluation:
 baseline_model:
   n_estimators: 100
 
+model_selection:
+  feature_set: hour_of_day
+  # Number of random-search configurations per model family.
+  n_trials:
+    logistic_regression: 20
+    lightgbm: 30
+    xgboost: 30
+  # Seeds used to estimate the run-to-run variability of the retained configurations.
+  seeds: [0, 1, 2, 3, 4]
+  # Target ratio of frauds to legitimate transactions after re-sampling a training fold.
+  resampling_ratio: 0.1
+  # Share of each training window, taken at its end, reserved to fit probability calibrators.
+  calibration_fraction: 0.2
+
 results_dir: results

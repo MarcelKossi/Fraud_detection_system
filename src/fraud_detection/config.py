@@ -37,12 +37,22 @@ class BaselineModelConfig:
 
 
 @dataclass(frozen=True)
+class ModelSelectionConfig:
+    feature_set: str
+    n_trials: dict[str, int]
+    seeds: list[int]
+    resampling_ratio: float
+    calibration_fraction: float
+
+
+@dataclass(frozen=True)
 class Config:
     seed: int
     data: DataConfig
     split: SplitConfig
     evaluation: EvaluationConfig
     baseline_model: BaselineModelConfig
+    model_selection: ModelSelectionConfig
     results_dir: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -60,6 +70,7 @@ def load_config(path: str | Path) -> Config:
         split=SplitConfig(**raw["split"]),
         evaluation=EvaluationConfig(**raw["evaluation"]),
         baseline_model=BaselineModelConfig(**raw["baseline_model"]),
+        model_selection=ModelSelectionConfig(**raw["model_selection"]),
         results_dir=str(raw["results_dir"]),
     )
 
