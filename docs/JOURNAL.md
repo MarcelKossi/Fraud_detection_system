@@ -98,3 +98,97 @@ once, at the end, for the retained configuration.
 Step 2: logistic regression and gradient-boosted trees, hyper-parameter search under a
 fixed budget, treatment of class imbalance and probability calibration, all compared by
 cross-validation on the development period.
+
+---
+
+## 2026-11-24 — Step 2: model selection
+
+### Objective
+
+Determine whether another model family improves on the random forest of the first
+version, whether the class imbalance should be corrected, and how to obtain usable
+probabilities. Every comparison relies on expanding-window cross-validation over the
+development period; the hold-out set is not read.
+
+### What was run
+
+```
+python scripts/run_model_selection.py
+python scripts/update_readme.py
+```
+
+Three stages: random search of hyper-parameters (20 configurations for logistic
+regression, 30 each for LightGBM and XGBoost, one seed); comparison of four imbalance
+treatments for the best configuration of each family (five seeds); comparison of three
+calibration methods (five seeds). Results are in `results/model_selection/`.
+
+### Observations
+
+**Model families (no imbalance treatment, mean over five seeds).**
+
+| Model | AUPRC | Per validation period | Recall at FPR ≤ 0.1% |
+|---|---|---|---|
+| Random forest (first version) | 0.757 | 0.804, 0.652, 0.811, 0.762 | 0.803 |
+| Logistic regression | 0.749 | 0.741, 0.628, 0.859, 0.768 | 0.792 |
+| LightGBM | 0.778 | 0.814, 0.697, 0.817, 0.786 | 0.803 |
+| XGBoost | 0.780 | 0.812, 0.703, 0.820, 0.786 | 0.795 |
+
+- Both boosted models exceed the random forest on each of the four periods and for each
+  of the five seeds, by about 0.02 on average.
+- LightGBM and XGBoost differ by 0.002, less than their variation between seeds
+  (standard deviation 0.002 to 0.003).
+- Logistic regression matches the random forest only under strong regularisation
+  (C ≈ 2 × 10⁻⁴); with weak regularisation its AUPRC falls to 0.54.
+- The recall at a false-positive rate of 0.1% is not improved by any model.
+
+**Sensitivity to settings.** Over the 30 configurations searched, the AUPRC of XGBoost
+ranges from 0.686 to 0.783 and that of LightGBM from 0.588 to 0.781.
+
+**Imbalance treatments.** For XGBoost: none 0.780, SMOTE 0.780, class weighting 0.775,
+under-sampling 0.747. For LightGBM: none 0.778, SMOTE 0.779, under-sampling 0.756, class
+weighting 0.616. No treatment improves on the untreated model beyond seed-to-seed
+variability.
+
+**Calibration (XGBoost).** Brier score 0.000522 without calibration, 0.000483 with
+sigmoid calibration, 0.000554 with isotonic calibration. AUPRC is unchanged by the
+sigmoid (0.772) and reduced by the isotonic method (0.726).
+
+### Interpretation
+
+- The gain of boosted trees over the random forest is small compared with the variation
+  between periods (0.65 to 0.82), but it is consistent across periods and seeds, which a
+  paired comparison is able to show.
+- Accuracy does not separate XGBoost from LightGBM on this dataset. Robustness to the
+  settings does: LightGBM has the wider spread over the search and collapses under class
+  weighting.
+- Re-sampling brings no benefit here and distorts the class proportions seen by the
+  model, hence the predicted probabilities.
+- Isotonic calibration is fitted on the last fifth of each training window, which holds
+  a few tens of frauds; its step function creates ties that degrade the ranking.
+
+### Correction made during this step
+
+The first version of the selection script retained, for each family, the treatment with
+the highest mean AUPRC. It selected SMOTE on the strength of a difference of 0.001. The
+rule was replaced: a treatment is retained only if it exceeds the absence of treatment
+by more than twice the standard deviation over seeds. The search range of the
+regularisation strength of the logistic regression was also extended after the best
+value of the first search fell on its lower bound.
+
+### Caveats
+
+- The reported cross-validated scores are those of the best of 20 or 30 configurations
+  and are therefore optimistically biased; the unbiased estimate will come from the
+  hold-out set at the end.
+- The hyper-parameter search uses a single seed; only the retained configurations were
+  repeated over five seeds.
+- Averaging several models and longer searches were not explored.
+
+### Decisions
+
+Recorded in `docs/DECISIONS.md` (D2): XGBoost, no imbalance treatment, sigmoid
+calibration.
+
+### Next
+
+Step 3: behavioural features on a simulated dataset with card and terminal identifiers.

@@ -58,3 +58,54 @@ with the first version only.
 **Reason.** With 0.17% of positive examples, threshold-dependent metrics at an
 arbitrary threshold and metrics dominated by true negatives are uninformative; AUPRC is
 threshold-free and is the measure recommended by the authors of the dataset.
+
+---
+
+## D2 — Model, imbalance treatment and calibration (2026-11-24)
+
+All evidence comes from expanding-window cross-validation on the development period,
+repeated over five seeds (`results/model_selection/`). The hold-out set was not used.
+
+### Model family
+
+**Options.** Random forest (first version), logistic regression, LightGBM, XGBoost.
+
+**Choice.** XGBoost, with the best configuration of the random search
+(`configs/config.yaml`, section `selected_model`).
+
+**Evidence.** Mean AUPRC: random forest 0.757, logistic regression 0.749, LightGBM
+0.778, XGBoost 0.780. Both boosted models exceed the random forest on every validation
+period and for every seed. The difference between XGBoost and LightGBM (0.002) is within
+seed-to-seed variability: accuracy does not separate them. XGBoost is preferred for its
+lower sensitivity to settings: over 30 searched configurations its AUPRC stays between
+0.686 and 0.783, against 0.588 to 0.781 for LightGBM, and it remains stable under class
+weighting (0.775) where LightGBM falls to 0.616.
+
+**What this choice does not claim.** XGBoost is not shown to be more accurate than
+LightGBM. On the secondary metric, recall at a false-positive rate of at most 0.1%, it
+is slightly below the random forest and LightGBM (0.795 against 0.803).
+
+### Imbalance treatment
+
+**Options.** None, class weighting, random under-sampling, SMOTE; the last two applied
+to training folds only.
+
+**Choice.** None.
+
+**Evidence.** For XGBoost: none 0.780, SMOTE 0.780, class weighting 0.775,
+under-sampling 0.747. No treatment exceeds the untreated model by more than twice the
+standard deviation over seeds, the criterion set for adopting one. The simplest option
+is retained; it also leaves the class proportions, and therefore the predicted
+probabilities, undistorted.
+
+### Probability calibration
+
+**Options.** None, sigmoid (Platt scaling), isotonic regression.
+
+**Choice.** Sigmoid, fitted on the most recent part of the training data, which is
+withheld from the classifier.
+
+**Evidence.** For XGBoost, the Brier score falls from 0.000522 to 0.000483 with the
+sigmoid and AUPRC is unchanged (0.772). Isotonic regression raises the Brier score to
+0.000554 and lowers AUPRC to 0.726. Calibrated probabilities are required by the
+cost-based threshold of step 4.

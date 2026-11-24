@@ -39,4 +39,19 @@ model_selection:
   # Share of each training window, taken at its end, reserved to fit probability calibrators.
   calibration_fraction: 0.2
 
+selected_model:
+  # Retained by decision D2 (docs/DECISIONS.md); values copied from
+  # results/model_selection/search_xgboost.json.
+  family: xgboost
+  imbalance: none
+  calibration: sigmoid
+  params:
+    colsample_bytree: 0.6210276357557503
+    learning_rate: 0.05967212083511124
+    max_depth: 4
+    min_child_weight: 1.9551434125044704
+    n_estimators: 500
+    reg_lambda: 8.182111518618424
+    subsample: 0.6838915663596266
+
 results_dir: results

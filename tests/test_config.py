@@ -21,3 +21,17 @@ def test_invalid_test_fraction_is_rejected(tmp_path):
     path.write_text(yaml.safe_dump(raw), encoding="utf-8")
     with pytest.raises(ValueError, match="test_fraction"):
         load_config(path)
+
+
+def test_selected_model_matches_the_search_result():
+    """The retained hyper-parameters are those of the best cross-validated trial."""
+    import json
+
+    from fraud_detection.models import build_model
+
+    config = load_config(CONFIG_PATH)
+    selected = config.selected_model
+    path = CONFIG_PATH.parents[1] / "results" / "model_selection" / f"search_{selected.family}.json"
+    best = json.loads(path.read_text(encoding="utf-8"))["best"]["params"]
+    assert selected.params == pytest.approx(best)
+    build_model(selected.family, selected.params, seed=config.seed)

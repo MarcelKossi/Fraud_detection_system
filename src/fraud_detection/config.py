@@ -46,6 +46,14 @@ class ModelSelectionConfig:
 
 
 @dataclass(frozen=True)
+class SelectedModelConfig:
+    family: str
+    imbalance: str
+    calibration: str
+    params: dict[str, Any]
+
+
+@dataclass(frozen=True)
 class Config:
     seed: int
     data: DataConfig
@@ -53,6 +61,7 @@ class Config:
     evaluation: EvaluationConfig
     baseline_model: BaselineModelConfig
     model_selection: ModelSelectionConfig
+    selected_model: SelectedModelConfig
     results_dir: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -71,6 +80,7 @@ def load_config(path: str | Path) -> Config:
         evaluation=EvaluationConfig(**raw["evaluation"]),
         baseline_model=BaselineModelConfig(**raw["baseline_model"]),
         model_selection=ModelSelectionConfig(**raw["model_selection"]),
+        selected_model=SelectedModelConfig(**raw["selected_model"]),
         results_dir=str(raw["results_dir"]),
     )
 
