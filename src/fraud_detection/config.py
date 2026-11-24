@@ -8,6 +8,8 @@ from typing import Any
 
 import yaml
 
+from fraud_detection.simulation import SimulationConfig
+
 
 @dataclass(frozen=True)
 class DataConfig:
@@ -54,6 +56,16 @@ class SelectedModelConfig:
 
 
 @dataclass(frozen=True)
+class BehaviouralConfig:
+    windows_days: list[int]
+    delay_days: int
+    test_fraction: float
+    n_cv_folds: int
+    seeds: list[int]
+    feature_sets: dict[str, list[str]]
+
+
+@dataclass(frozen=True)
 class Config:
     seed: int
     data: DataConfig
@@ -62,6 +74,8 @@ class Config:
     baseline_model: BaselineModelConfig
     model_selection: ModelSelectionConfig
     selected_model: SelectedModelConfig
+    simulation: SimulationConfig
+    behavioural: BehaviouralConfig
     results_dir: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -81,6 +95,8 @@ def load_config(path: str | Path) -> Config:
         baseline_model=BaselineModelConfig(**raw["baseline_model"]),
         model_selection=ModelSelectionConfig(**raw["model_selection"]),
         selected_model=SelectedModelConfig(**raw["selected_model"]),
+        simulation=SimulationConfig(**raw["simulation"]),
+        behavioural=BehaviouralConfig(**raw["behavioural"]),
         results_dir=str(raw["results_dir"]),
     )
 

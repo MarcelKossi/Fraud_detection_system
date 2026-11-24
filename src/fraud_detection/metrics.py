@@ -26,6 +26,12 @@ def recall_at_fpr(y_true: np.ndarray, scores: np.ndarray, max_fpr: float) -> flo
     return float(tpr[fpr <= max_fpr].max())
 
 
+def threshold_at_fpr(y_true: np.ndarray, scores: np.ndarray, max_fpr: float) -> float:
+    """Lowest score threshold whose false-positive rate does not exceed ``max_fpr``."""
+    fpr, _, thresholds = roc_curve(y_true, scores)
+    return float(thresholds[fpr <= max_fpr].min())
+
+
 def threshold_metrics(y_true: np.ndarray, scores: np.ndarray, threshold: float) -> dict:
     """Precision, recall, F1 and confusion matrix at a fixed decision threshold."""
     predicted = (np.asarray(scores) >= threshold).astype(int)

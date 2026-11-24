@@ -192,3 +192,104 @@ calibration.
 ### Next
 
 Step 3: behavioural features on a simulated dataset with card and terminal identifiers.
+
+---
+
+## 2026-11-24 — Step 3: behavioural features on simulated transactions
+
+### Objective
+
+Build features that describe the habits of a customer and the recent history of a
+terminal, guarantee that they use only information available at the time of each
+transaction, and measure what each group of features contributes. The main dataset has
+no identifier; the study is carried out on simulated transactions, as decided in D1.
+
+### What was run
+
+```
+python scripts/run_behavioural_features.py
+python scripts/update_readme.py
+```
+
+Results are in `results/behavioural/`.
+
+### Data
+
+The simulator (`fraud_detection.simulation`) is an independent implementation of the
+generative process specified in the *Fraud Detection Handbook*, with its baseline
+settings: 5,000 customers, 10,000 terminals, 183 days. It produces 1,793,343
+transactions, 15,268 of them frauds (0.85%): 1,109 by amount above the threshold, 9,268
+on compromised terminals and 4,891 on compromised customers. The handbook reports
+1,754,155 transactions and 14,681 frauds (0.84%) for its own random draws; the two
+tables are comparable, not identical.
+
+### Features
+
+- Raw: amount, cyclic time of day.
+- Calendar: weekend flag, night flag.
+- Customer, over 1, 7 and 30 days: number of transactions, mean amount, ratio of the
+  current amount to that mean. The window includes the current transaction.
+- Terminal, over 1, 7 and 30 days: number of transactions and share of frauds, both
+  shifted by a label delay of 7 days.
+
+Three tests establish point-in-time correctness: the features of past transactions are
+unchanged when all later transactions are removed; the terminal risk is unchanged when
+every label of the last days, within the delay, is altered; no feature changes when the
+label of the current transaction changes.
+
+### Protocol
+
+The last 20% of the period is set aside as a hold-out set and not read. On the remaining
+146 days, four expanding-window folds are used; each training window ends 7 days before
+its validation block, since the labels of the most recent days would not be known at
+training time. The model is the XGBoost configuration retained in D2, without
+re-tuning, over three seeds.
+
+### Observations
+
+| Feature set | AUPRC | Recall at FPR ≤ 0.1% | Amount scenario | Terminal scenario | Customer scenario |
+|---|---|---|---|---|---|
+| Raw | 0.164 | 0.139 | 0.541 | 0.001 | 0.324 |
+| Raw + calendar | 0.163 | 0.139 | 0.545 | 0.001 | 0.324 |
+| Raw + customer | 0.349 | 0.323 | 0.976 | 0.002 | 0.819 |
+| Raw + terminal | 0.590 | 0.419 | 0.275 | 0.559 | 0.171 |
+| All | 0.717 | 0.618 | 0.684 | 0.578 | 0.682 |
+
+The last three columns are the shares of frauds of each scenario flagged at the same
+false-positive rate. The standard deviation of AUPRC over seeds is at most 0.003. In the
+first fold, trained on 22 days only, AUPRC with all features is 0.555 against 0.76 to
+0.79 in the following folds.
+
+### Interpretation
+
+- Terminal aggregates are necessary and sufficient to detect frauds on compromised
+  terminals, which no other feature reveals (0.001 without them).
+- Customer aggregates raise the detection of frauds on compromised customers from 0.32
+  to 0.82, and that of large amounts to 0.98.
+- Calendar flags bring nothing; in the simulator, fraud does not depend on the day of
+  the week nor on the hour.
+- With all groups, AUPRC is highest but the first and third scenarios are less well
+  detected at a 0.1% false-positive rate than with customer aggregates alone. A
+  plausible explanation, not verified here, is that legitimate transactions on terminals
+  whose compromise has just ended keep a high delayed risk and consume part of the
+  false-positive budget.
+- With raw features, only 54% of the transactions above the amount threshold are
+  flagged, although a single rule on the amount would flag all of them. Inspection of
+  one fold shows that the model assigns them scores near 0.55, below those of some
+  legitimate transactions close to the threshold. The configuration retained in D2 draws
+  about 62% of the features for each tree, that is a single feature when only three are
+  available, and is strongly regularised: it under-fits the smallest feature sets.
+
+### Caveats
+
+- The data are synthetic and the scenarios were designed so that these features are
+  informative. The result validates the feature pipeline; it says nothing about the
+  size of the benefit on real transactions.
+- Hyper-parameters were not tuned on the simulated data. The comparison is therefore
+  unfavourable to the small feature sets, and the absolute values are lower bounds.
+- The seven-day label delay makes the first week of each terminal compromise
+  undetectable by the terminal risk, which bounds the recall on that scenario.
+
+### Next
+
+Step 4: cost-based decision threshold on the main dataset.
