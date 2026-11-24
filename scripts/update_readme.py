@@ -156,6 +156,20 @@ def cost_table(results: Path, reference_cost: float) -> str:
     return "\n".join(rows)
 
 
+def attribution_table(results: Path) -> str:
+    result = _load(results, "explanations/global_importance.json")
+    rows = [
+        "| Rank | Feature | Mean absolute contribution (log-odds) | Rank in each period |",
+        "|---|---|---|---|",
+    ]
+    for rank, entry in enumerate(result["features"][: result["top_k"]], start=1):
+        rows.append(
+            f"| {rank} | `{entry['feature']}` | {entry['mean_abs_contribution']:.3f} "
+            f"| {', '.join(str(r) for r in entry['rank_per_fold'])} |"
+        )
+    return "\n".join(rows)
+
+
 def replace_block(text: str, name: str, content: str) -> str:
     pattern = re.compile(rf"(<!-- BEGIN:{name} -->\n).*?(<!-- END:{name} -->)", flags=re.DOTALL)
     if not pattern.search(text):
@@ -182,6 +196,7 @@ def main() -> None:
         ("calibration", calibration_table(results, family)),
         ("behavioural", behavioural_table(results)),
         ("costs", cost_table(results, config.cost.alert_cost)),
+        ("attributions", attribution_table(results)),
     ):
         text = replace_block(text, name, content)
     readme.write_text(text, encoding="utf-8")

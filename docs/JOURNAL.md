@@ -374,3 +374,66 @@ bound. The hold-out set is not read.
 ### Next
 
 Step 5: explanation of individual predictions.
+
+---
+
+## 2026-11-24 — Step 5: explanation of predictions
+
+### Objective
+
+Attribute each prediction of the retained model to its input features, verify that the
+attribution is exact, and assess how stable the importance of the features is.
+
+### What was run
+
+```
+python scripts/run_explanations.py
+python scripts/update_readme.py
+```
+
+Results are in `results/explanations/`.
+
+### Method
+
+Shapley contributions are computed exactly for tree ensembles (TreeSHAP), using the
+implementation built into XGBoost, which avoids an additional dependency. They are
+expressed on the log-odds scale of the uncalibrated classifier. For each validation
+period of the development set and each of five seeds, the model is fitted on the
+preceding transactions and contributions are computed on the validation transactions.
+The hold-out set is not read.
+
+### Observations
+
+- Additivity: contributions and base value add up to the predicted log-odds, with a
+  largest deviation of 2.7 × 10⁻⁵ over all transactions.
+- Leading features, by mean absolute contribution: V4 (1.44), V14 (1.38), V12 (0.90),
+  V10 (0.52), V8 (0.43), Amount (0.36). The first ten carry 66% of the total.
+- V4, V14, V12 and V10 keep their rank to within one position in the four periods. On
+  frauds only, V14 has by far the largest contribution (2.85).
+- Stability between seeds is high (Spearman correlation of importances 0.98 on average,
+  0.96 at least). Between periods it is moderate (0.66 on average, 0.50 at least): for
+  example V21 is ranked 6, 6, 8 and 20, and the time of day 28, 7, 10 and 9.
+- Six features are in the top ten of every period: Amount, V4, V8, V10, V12 and V14.
+
+### Interpretation
+
+- A small core of features drives the model consistently; the rest of the ranking
+  depends on the period, which is consistent with the variation of performance between
+  periods observed in steps 1 and 2.
+- The low rank of the time of day in the first period and its higher rank afterwards
+  agree with step 1, where it did not change performance.
+
+### Caveats
+
+- The features are anonymised principal components: explanations cannot be translated
+  into business terms, apart from the amount and the time of day.
+- Contributions describe the model, not the causes of fraud; correlated features share
+  their contributions in a way that depends on the model.
+- Contributions are on the scale of the uncalibrated classifier. Sigmoid calibration is
+  an affine transformation of the log-odds, so contributions to the calibrated log-odds
+  are obtained by multiplying by the slope of the calibrator; this is implemented with
+  the prediction service in step 6.
+
+### Next
+
+Step 6: deployable prototype (single serialised pipeline, validated API, container).

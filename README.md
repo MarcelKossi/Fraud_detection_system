@@ -5,9 +5,9 @@ Supervised detection of fraudulent card transactions on a highly imbalanced data
 transactions, with the aim of a deployable prototype: a trained and calibrated model,
 a validated REST API and an interactive dashboard.
 
-> **Status — version 2 in progress.** Steps 1 to 4 of the roadmap below are complete:
-> evaluation protocol, reference measurements, model selection, behavioural features and
-> cost-based decision rule.
+> **Status — version 2 in progress.** Steps 1 to 5 of the roadmap below are complete:
+> evaluation protocol, reference measurements, model selection, behavioural features,
+> cost-based decision rule and explanation of predictions.
 > The serving layer
 > (`api/`, `dashboard/`) still dates from the first version and is rewritten in step 6.
 > The first version is preserved under the tag `v0-legacy`.
@@ -167,6 +167,39 @@ the rule deliberately ignores most of them, whereas a small fraud may in practic
 precede larger ones on the same card. And the gap to the oracle remains large: the
 remaining cost comes from frauds to which the model assigns a low probability.
 
+### 7. Each prediction can be decomposed exactly into feature contributions
+
+Each prediction of the retained model is attributed to its input features by Shapley
+values, computed exactly for tree ensembles. For every transaction, the contributions
+and a base value add up to the log-odds predicted by the model (largest deviation
+observed: of the order of 10⁻⁵). The table gives the ten features with the largest mean
+absolute contribution over the validation periods.
+
+<!-- BEGIN:attributions -->
+| Rank | Feature | Mean absolute contribution (log-odds) | Rank in each period |
+|---|---|---|---|
+| 1 | `V4` | 1.435 | 1, 2, 2, 1 |
+| 2 | `V14` | 1.377 | 2, 1, 1, 2 |
+| 3 | `V12` | 0.898 | 3, 3, 3, 3 |
+| 4 | `V10` | 0.515 | 4, 4, 5, 4 |
+| 5 | `V8` | 0.426 | 8, 8, 4, 5 |
+| 6 | `Amount` | 0.364 | 7, 5, 7, 6 |
+| 7 | `V21` | 0.345 | 6, 6, 8, 20 |
+| 8 | `V11` | 0.303 | 10, 10, 11, 7 |
+| 9 | `V20` | 0.284 | 9, 9, 9, 23 |
+| 10 | `V26` | 0.265 | 5, 16, 17, 16 |
+<!-- END:attributions -->
+
+The four leading features keep their rank to within one position in every period, and
+the ranking is nearly identical from one seed to another. Beyond them the ranking is
+only moderately stable between periods: an explanation that rests on the lower-ranked
+features should be read with caution.
+
+Two reservations apply. Apart from the amount and the time of day, the features are
+anonymised principal components, so an explanation names a component and not a
+property of the transaction that an analyst could act on. And a contribution describes
+how the model uses a feature; it is not evidence of what causes fraud.
+
 ### Not yet available
 
 The performance of the retained model on the hold-out set is deliberately not reported
@@ -228,6 +261,7 @@ python scripts/run_baseline.py          # result 1, about 10 minutes on 2 cores
 python scripts/run_model_selection.py   # results 2 to 4, about 35 minutes on 2 cores
 python scripts/run_behavioural_features.py   # result 5, about 25 minutes on 2 cores
 python scripts/run_cost_analysis.py          # result 6, about 2 minutes on 2 cores
+python scripts/run_explanations.py           # result 7, about 2 minutes on 2 cores
 python scripts/update_readme.py         # regenerate the tables of this file
 ```
 
@@ -252,6 +286,7 @@ src/fraud_detection/       installable package
     simulation.py          simulator of transactions with identifiers
     behavioural.py         customer and terminal aggregates
     costs.py               cost model and decision rules
+    explain.py             attribution of predictions to features
     experiment.py          provenance of results
 scripts/                   experiment entry points
 tests/                     unit tests
@@ -269,7 +304,7 @@ notebooks/                 exploratory analysis of the first version
 | 2 | Model selection, imbalance treatments, calibration | Done |
 | 3 | Behavioural features on a dataset with card and terminal identifiers | Done |
 | 4 | Cost-based decision rule | Done |
-| 5 | Explanation of individual predictions | Planned |
+| 5 | Explanation of individual predictions | Done |
 | 6 | Deployable prototype: single pipeline, validated API, container | Planned |
 | 7 | Final evaluation on the hold-out set, model card, technical report | Planned |
 
@@ -307,6 +342,10 @@ the first version remains available under the tag `v0-legacy`.
   Minority Over-sampling Technique.* Journal of Artificial Intelligence Research, 2002.
 - J. Platt. *Probabilistic Outputs for Support Vector Machines and Comparisons to
   Regularized Likelihood Methods.* Advances in Large Margin Classifiers, 1999.
+- S. M. Lundberg and S.-I. Lee. *A Unified Approach to Interpreting Model Predictions.*
+  Advances in Neural Information Processing Systems, 2017.
+- S. M. Lundberg et al. *From Local Explanations to Global Understanding with
+  Explainable AI for Trees.* Nature Machine Intelligence, 2020.
 - T. Chen and C. Guestrin. *XGBoost: A Scalable Tree Boosting System.* ACM SIGKDD, 2016.
 - G. Ke et al. *LightGBM: A Highly Efficient Gradient Boosting Decision Tree.* Advances
   in Neural Information Processing Systems, 2017.
