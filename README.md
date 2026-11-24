@@ -230,6 +230,8 @@ the first version remains available under the tag `v0-legacy`.
 
 TAMPLARE K. Marcel
 
-## Licence
+## Purpose and terms of use
 
-This project is provided for educational and demonstration purposes.
+This project is a demonstration of technical expertise in machine learning, conducted
+with the methodological standards of research. It is shared for demonstration and
+research purposes.
