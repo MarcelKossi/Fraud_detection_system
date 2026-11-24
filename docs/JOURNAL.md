@@ -275,7 +275,7 @@ first fold, trained on 22 days only, AUPRC with all features is 0.555 against 0.
   false-positive budget.
 - With raw features, only 54% of the transactions above the amount threshold are
   flagged, although a single rule on the amount would flag all of them. Inspection of
-  one fold shows that the model assigns them scores near 0.55, below those of some
+  one fold (not stored in `results/`) shows that the model assigns them scores near 0.55, below those of some
   legitimate transactions close to the threshold. The configuration retained in D2 draws
   about 62% of the features for each tree, that is a single feature when only three are
   available, and is strongly regularised: it under-fits the smallest feature sets.

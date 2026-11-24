@@ -11,6 +11,8 @@ a validated REST API and an interactive dashboard.
 > described in its [model card](docs/MODEL_CARD.md). The first version is preserved
 > under the tag `v0-legacy`.
 
+![AUPRC of the first version under two evaluation protocols and of the retained model on the hold-out set](docs/figures/evaluation.png)
+
 ## Contents
 
 1. [Results](#results)
@@ -62,6 +64,8 @@ five seeds, no imbalance treatment. The hold-out set is not used.
 | LightGBM | 0.778 (0.003) | 0.814, 0.697, 0.817, 0.786 | 0.803 |
 | XGBoost | 0.780 (0.002) | 0.812, 0.703, 0.820, 0.786 | 0.795 |
 <!-- END:models -->
+
+![Cross-validated AUPRC of each model family in each validation period](docs/figures/model_selection.png)
 
 Both boosted models exceed the random forest on each of the four periods and for each of
 the five seeds. The two boosted models cannot be told apart on AUPRC, and no model
@@ -119,6 +123,8 @@ days before its validation period, the delay after which labels are assumed know
 | + terminal aggregates | 9 | 0.590 (0.001) | 0.419 | 0.275 | 0.559 | 0.171 |
 | All groups | 20 | 0.717 (0.003) | 0.618 | 0.684 | 0.578 | 0.682 |
 <!-- END:behavioural -->
+
+![Share of frauds flagged by fraud scenario and feature set on simulated transactions](docs/figures/behavioural.png)
 
 The last three columns give, for each fraud scenario, the share of frauds flagged at
 the same false-positive rate. Frauds on compromised terminals are invisible without the
@@ -190,6 +196,8 @@ absolute contribution over the validation periods.
 | 10 | `V26` | 0.265 | 5, 16, 17, 16 |
 <!-- END:attributions -->
 
+![Mean absolute contribution of the ten leading features, overall and in each validation period](docs/figures/attributions.png)
+
 The four leading features keep their rank to within one position in every period, and
 the ranking is nearly identical from one seed to another. Beyond them the ranking is
 only moderately stable between periods: an explanation that rests on the lower-ranked
@@ -205,8 +213,12 @@ how the model uses a feature; it is not evidence of what causes fraud.
 The stored model was evaluated once on the last 20% of the transactions, which no
 modelling choice had used. It is compared, on the same transactions, with the model and
 the decision rule of the first version (random forest with default settings, threshold
-of 0.5), trained on the same development period. Intervals are 95% bootstrap intervals;
-those of the differences are paired.
+of 0.5), trained on the same development period. The random forest is fitted on the
+whole development period, whereas the classifier of the retained model is fitted on its
+first 80%, the rest being reserved for calibration. Intervals are 95% percentile
+bootstrap intervals obtained by resampling transactions; those of the differences are
+paired. Resampling treats transactions as independent, which ignores their dependence
+in time and may make the intervals somewhat too narrow.
 
 <!-- BEGIN:final -->
 | System | AUPRC | Recall at FPR ≤ 0.1% | Savings, alert cost 10 | Alerts | Frauds flagged |
@@ -230,7 +242,10 @@ considered:
 | Oracle (upper bound) | 97.1% | 95.0% | 89.7% |
 <!-- END:final_sensitivity -->
 
-What these figures support, and what they do not:
+![Savings of each decision rule in cross-validation and on the hold-out set](docs/figures/cost_rules.png)
+
+The cost-optimal threshold was not carried to the hold-out set. What these figures
+support, and what they do not:
 
 - **Ranking.** The retained model has the higher AUPRC, by a margin close to the one
   measured in cross-validation, and it is ahead in most bootstrap resamples. The
@@ -408,7 +423,8 @@ exists. To reproduce it, delete that file first.
 
 ```bash
 python scripts/evaluate_holdout.py           # result 8, about 10 minutes on 2 cores
-python scripts/update_readme.py         # regenerate the tables of this file
+python scripts/update_readme.py         # regenerate the tables of the documents
+python scripts/make_figures.py          # regenerate the figures
 ```
 
 Every experiment reads `configs/config.yaml` and writes a JSON file to `results/`
@@ -467,6 +483,10 @@ notebooks/                 exploratory analysis of the first version
 - Differences between models below about 0.01 of AUPRC cannot be resolved with the
   number of frauds available.
 - The hyper-parameter search is limited to 30 random configurations per boosted model.
+- Exact duplicate rows are removed as artefacts. They are about ten times richer in
+  frauds than the rest of the file (19 of 1,081), so some may be genuine repeated
+  attempts; keeping them with a split that never separates copies is an alternative
+  that was not evaluated.
 - Behavioural features are evaluated on synthetic data only; their benefit on real
   transactions is not measured here.
 
