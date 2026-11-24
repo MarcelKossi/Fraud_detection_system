@@ -8,6 +8,8 @@ from typing import Any
 
 import yaml
 
+from fraud_detection.simulation import SimulationConfig
+
 
 @dataclass(frozen=True)
 class DataConfig:
@@ -54,6 +56,24 @@ class SelectedModelConfig:
 
 
 @dataclass(frozen=True)
+class BehaviouralConfig:
+    windows_days: list[int]
+    delay_days: int
+    test_fraction: float
+    n_cv_folds: int
+    seeds: list[int]
+    feature_sets: dict[str, list[str]]
+
+
+@dataclass(frozen=True)
+class CostConfig:
+    decision_rule: str
+    alert_cost: float
+    sensitivity_alert_costs: list[float]
+    amount_column: str
+
+
+@dataclass(frozen=True)
 class Config:
     seed: int
     data: DataConfig
@@ -62,6 +82,9 @@ class Config:
     baseline_model: BaselineModelConfig
     model_selection: ModelSelectionConfig
     selected_model: SelectedModelConfig
+    simulation: SimulationConfig
+    behavioural: BehaviouralConfig
+    cost: CostConfig
     results_dir: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -81,6 +104,9 @@ def load_config(path: str | Path) -> Config:
         baseline_model=BaselineModelConfig(**raw["baseline_model"]),
         model_selection=ModelSelectionConfig(**raw["model_selection"]),
         selected_model=SelectedModelConfig(**raw["selected_model"]),
+        simulation=SimulationConfig(**raw["simulation"]),
+        behavioural=BehaviouralConfig(**raw["behavioural"]),
+        cost=CostConfig(**raw["cost"]),
         results_dir=str(raw["results_dir"]),
     )
 
@@ -88,6 +114,8 @@ def load_config(path: str | Path) -> Config:
         raise ValueError("split.test_fraction must lie strictly between 0 and 1")
     if config.split.n_cv_folds < 2:
         raise ValueError("split.n_cv_folds must be at least 2")
+    if config.cost.decision_rule not in ("expected_cost", "threshold"):
+        raise ValueError("cost.decision_rule must be 'expected_cost' or 'threshold'")
     if not 0.0 < config.evaluation.confidence_level < 1.0:
         raise ValueError("evaluation.confidence_level must lie strictly between 0 and 1")
     return config

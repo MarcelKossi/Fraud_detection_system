@@ -1,0 +1,683 @@
+{
+  "experiment": "global_attributions",
+  "scale": "log-odds of the uncalibrated classifier",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "n_folds": 4,
+  "max_additivity_error": 2.6702880859375e-05,
+  "rank_agreement_between_folds": {
+    "spearman_mean": 0.6577956989247312,
+    "spearman_min": 0.4955645161290323
+  },
+  "rank_agreement_between_seeds": {
+    "spearman_mean": 0.9783870967741937,
+    "spearman_min": 0.9616935483870969
+  },
+  "top_k": 10,
+  "features_in_top_k_of_every_fold": [
+    "Amount",
+    "V10",
+    "V12",
+    "V14",
+    "V4",
+    "V8"
+  ],
+  "share_of_total_importance_in_top_k": 0.6607489720495008,
+  "features": [
+    {
+      "feature": "V4",
+      "mean_abs_contribution": 1.434519374370575,
+      "mean_abs_contribution_on_frauds": 1.1588101387023926,
+      "per_fold": [
+        1.728145170211792,
+        1.3695966958999635,
+        1.2137803554534912,
+        1.4265552759170532
+      ],
+      "rank_per_fold": [
+        1,
+        2,
+        2,
+        1
+      ]
+    },
+    {
+      "feature": "V14",
+      "mean_abs_contribution": 1.3769797325134276,
+      "mean_abs_contribution_on_frauds": 2.8512879610061646,
+      "per_fold": [
+        1.3430124282836915,
+        1.5230854272842407,
+        1.5467719316482544,
+        1.0950491428375244
+      ],
+      "rank_per_fold": [
+        2,
+        1,
+        1,
+        2
+      ]
+    },
+    {
+      "feature": "V12",
+      "mean_abs_contribution": 0.8978446692228317,
+      "mean_abs_contribution_on_frauds": 1.042340624332428,
+      "per_fold": [
+        0.8998906254768372,
+        1.0674821376800536,
+        0.7843060970306397,
+        0.8396998167037963
+      ],
+      "rank_per_fold": [
+        3,
+        3,
+        3,
+        3
+      ]
+    },
+    {
+      "feature": "V10",
+      "mean_abs_contribution": 0.514687892794609,
+      "mean_abs_contribution_on_frauds": 1.5163920640945434,
+      "per_fold": [
+        0.619708800315857,
+        0.45862133502960206,
+        0.4573039710521698,
+        0.5231174647808075
+      ],
+      "rank_per_fold": [
+        4,
+        4,
+        5,
+        4
+      ]
+    },
+    {
+      "feature": "V8",
+      "mean_abs_contribution": 0.4257296994328499,
+      "mean_abs_contribution_on_frauds": 0.5159542575478554,
+      "per_fold": [
+        0.3378521382808685,
+        0.3671983540058136,
+        0.5118617832660675,
+        0.4860065221786499
+      ],
+      "rank_per_fold": [
+        8,
+        8,
+        4,
+        5
+      ]
+    },
+    {
+      "feature": "Amount",
+      "mean_abs_contribution": 0.36395895779132836,
+      "mean_abs_contribution_on_frauds": 0.41473080068826673,
+      "per_fold": [
+        0.3404240071773529,
+        0.4183648407459259,
+        0.3405322372913361,
+        0.3565147459506989
+      ],
+      "rank_per_fold": [
+        7,
+        5,
+        7,
+        6
+      ]
+    },
+    {
+      "feature": "V21",
+      "mean_abs_contribution": 0.344912426918745,
+      "mean_abs_contribution_on_frauds": 0.2997202791273594,
+      "per_fold": [
+        0.5097724378108979,
+        0.38417298793792726,
+        0.31220821738243104,
+        0.17349606454372407
+      ],
+      "rank_per_fold": [
+        6,
+        6,
+        8,
+        20
+      ]
+    },
+    {
+      "feature": "V11",
+      "mean_abs_contribution": 0.30284078717231755,
+      "mean_abs_contribution_on_frauds": 0.3454982116818428,
+      "per_fold": [
+        0.2657396733760834,
+        0.3161671459674835,
+        0.27310546636581423,
+        0.35635086297988894
+      ],
+      "rank_per_fold": [
+        10,
+        10,
+        11,
+        7
+      ]
+    },
+    {
+      "feature": "V20",
+      "mean_abs_contribution": 0.28375654146075246,
+      "mean_abs_contribution_on_frauds": 0.3427807085216045,
+      "per_fold": [
+        0.31473551988601683,
+        0.3613970458507538,
+        0.3070541024208069,
+        0.15183949768543242
+      ],
+      "rank_per_fold": [
+        9,
+        9,
+        9,
+        23
+      ]
+    },
+    {
+      "feature": "V26",
+      "mean_abs_contribution": 0.26472330912947656,
+      "mean_abs_contribution_on_frauds": 0.5181990839540959,
+      "per_fold": [
+        0.5172522664070129,
+        0.18639943301677703,
+        0.16617048978805543,
+        0.18907104730606078
+      ],
+      "rank_per_fold": [
+        5,
+        16,
+        17,
+        16
+      ]
+    },
+    {
+      "feature": "hour_sin",
+      "mean_abs_contribution": 0.2622981442138553,
+      "mean_abs_contribution_on_frauds": 0.27064818106591704,
+      "per_fold": [
+        0.07463452145457268,
+        0.38142269253730776,
+        0.30047388672828673,
+        0.2926614761352539
+      ],
+      "rank_per_fold": [
+        28,
+        7,
+        10,
+        9
+      ]
+    },
+    {
+      "feature": "V22",
+      "mean_abs_contribution": 0.2550223246216774,
+      "mean_abs_contribution_on_frauds": 0.34167151004076,
+      "per_fold": [
+        0.12087534964084626,
+        0.26847580075263977,
+        0.45690506100654604,
+        0.17383308708667755
+      ],
+      "rank_per_fold": [
+        21,
+        12,
+        6,
+        19
+      ]
+    },
+    {
+      "feature": "V16",
+      "mean_abs_contribution": 0.20501442439854145,
+      "mean_abs_contribution_on_frauds": 0.3027012921869755,
+      "per_fold": [
+        0.24721727073192595,
+        0.1104567751288414,
+        0.23638453781604768,
+        0.22599911391735078
+      ],
+      "rank_per_fold": [
+        11,
+        20,
+        13,
+        10
+      ]
+    },
+    {
+      "feature": "V6",
+      "mean_abs_contribution": 0.19070454314351082,
+      "mean_abs_contribution_on_frauds": 0.22301689870655536,
+      "per_fold": [
+        0.21980448067188263,
+        0.26458559930324554,
+        0.16440247297286986,
+        0.11402561962604522
+      ],
+      "rank_per_fold": [
+        13,
+        13,
+        18,
+        27
+      ]
+    },
+    {
+      "feature": "V5",
+      "mean_abs_contribution": 0.1734971735626459,
+      "mean_abs_contribution_on_frauds": 0.12767085004597903,
+      "per_fold": [
+        0.1205383762717247,
+        0.18880098760128022,
+        0.17251852452754973,
+        0.212130805850029
+      ],
+      "rank_per_fold": [
+        22,
+        15,
+        16,
+        12
+      ]
+    },
+    {
+      "feature": "V3",
+      "mean_abs_contribution": 0.17309479080140588,
+      "mean_abs_contribution_on_frauds": 0.12912581134587525,
+      "per_fold": [
+        0.14368724972009658,
+        0.2083086609840393,
+        0.14776425957679748,
+        0.19261899292469026
+      ],
+      "rank_per_fold": [
+        16,
+        14,
+        19,
+        15
+      ]
+    },
+    {
+      "feature": "V24",
+      "mean_abs_contribution": 0.16949247680604457,
+      "mean_abs_contribution_on_frauds": 0.17908254377543925,
+      "per_fold": [
+        0.15117750465869903,
+        0.09735990017652511,
+        0.24897118508815766,
+        0.1804613173007965
+      ],
+      "rank_per_fold": [
+        15,
+        22,
+        12,
+        18
+      ]
+    },
+    {
+      "feature": "V28",
+      "mean_abs_contribution": 0.16788562424480913,
+      "mean_abs_contribution_on_frauds": 0.25863110050559046,
+      "per_fold": [
+        0.13310746103525162,
+        0.1546405017375946,
+        0.178215491771698,
+        0.20557904243469238
+      ],
+      "rank_per_fold": [
+        18,
+        17,
+        15,
+        13
+      ]
+    },
+    {
+      "feature": "V19",
+      "mean_abs_contribution": 0.15966248381882905,
+      "mean_abs_contribution_on_frauds": 0.12109293676912784,
+      "per_fold": [
+        0.13719160556793214,
+        0.08109764829277992,
+        0.1992430567741394,
+        0.22111762464046478
+      ],
+      "rank_per_fold": [
+        17,
+        27,
+        14,
+        11
+      ]
+    },
+    {
+      "feature": "V7",
+      "mean_abs_contribution": 0.15792677849531173,
+      "mean_abs_contribution_on_frauds": 0.20200350005179643,
+      "per_fold": [
+        0.06860279738903045,
+        0.1103865459561348,
+        0.13616070300340652,
+        0.31655706763267516
+      ],
+      "rank_per_fold": [
+        30,
+        21,
+        22,
+        8
+      ]
+    },
+    {
+      "feature": "V2",
+      "mean_abs_contribution": 0.14863106273114682,
+      "mean_abs_contribution_on_frauds": 0.13199731856584548,
+      "per_fold": [
+        0.2415313571691513,
+        0.08939961344003677,
+        0.11995289176702499,
+        0.1436403885483742
+      ],
+      "rank_per_fold": [
+        12,
+        25,
+        24,
+        24
+      ]
+    },
+    {
+      "feature": "hour_cos",
+      "mean_abs_contribution": 0.14569244682788848,
+      "mean_abs_contribution_on_frauds": 0.13481218684464694,
+      "per_fold": [
+        0.07998272031545639,
+        0.28457489907741546,
+        0.09100276678800583,
+        0.12720940113067628
+      ],
+      "rank_per_fold": [
+        26,
+        11,
+        29,
+        26
+      ]
+    },
+    {
+      "feature": "V17",
+      "mean_abs_contribution": 0.13057042323052884,
+      "mean_abs_contribution_on_frauds": 0.6284116428345442,
+      "per_fold": [
+        0.1251814156770706,
+        0.09034768640995025,
+        0.13439470380544663,
+        0.17235788702964783
+      ],
+      "rank_per_fold": [
+        19,
+        24,
+        23,
+        21
+      ]
+    },
+    {
+      "feature": "V13",
+      "mean_abs_contribution": 0.12487038541585208,
+      "mean_abs_contribution_on_frauds": 0.11921221427619458,
+      "per_fold": [
+        0.0844189777970314,
+        0.09108617678284645,
+        0.14159018248319627,
+        0.18238620460033417
+      ],
+      "rank_per_fold": [
+        25,
+        23,
+        20,
+        17
+      ]
+    },
+    {
+      "feature": "V23",
+      "mean_abs_contribution": 0.11690859943628312,
+      "mean_abs_contribution_on_frauds": 0.12057658731937408,
+      "per_fold": [
+        0.16506621837615967,
+        0.0835210219025612,
+        0.085910564661026,
+        0.1331365928053856
+      ],
+      "rank_per_fold": [
+        14,
+        26,
+        30,
+        25
+      ]
+    },
+    {
+      "feature": "V18",
+      "mean_abs_contribution": 0.11149176517501475,
+      "mean_abs_contribution_on_frauds": 0.08163675013929605,
+      "per_fold": [
+        0.03948955424129963,
+        0.07409496009349822,
+        0.1370442435145378,
+        0.19533830285072326
+      ],
+      "rank_per_fold": [
+        31,
+        29,
+        21,
+        14
+      ]
+    },
+    {
+      "feature": "V25",
+      "mean_abs_contribution": 0.10522971935570241,
+      "mean_abs_contribution_on_frauds": 0.11791387740522623,
+      "per_fold": [
+        0.09963129162788391,
+        0.11074108332395553,
+        0.1022457629442215,
+        0.10830073952674865
+      ],
+      "rank_per_fold": [
+        24,
+        19,
+        27,
+        29
+      ]
+    },
+    {
+      "feature": "V1",
+      "mean_abs_contribution": 0.09964743442833424,
+      "mean_abs_contribution_on_frauds": 0.09521821737289429,
+      "per_fold": [
+        0.10432149022817612,
+        0.0675320602953434,
+        0.07153620347380638,
+        0.15519998371601104
+      ],
+      "rank_per_fold": [
+        23,
+        30,
+        31,
+        22
+      ]
+    },
+    {
+      "feature": "V9",
+      "mean_abs_contribution": 0.09828739445656537,
+      "mean_abs_contribution_on_frauds": 0.08397383932024241,
+      "per_fold": [
+        0.07400310263037682,
+        0.13484393209218978,
+        0.09982579499483109,
+        0.08447674810886383
+      ],
+      "rank_per_fold": [
+        29,
+        18,
+        28,
+        31
+      ]
+    },
+    {
+      "feature": "V27",
+      "mean_abs_contribution": 0.09803794734179973,
+      "mean_abs_contribution_on_frauds": 0.16258477717638015,
+      "per_fold": [
+        0.12408529072999955,
+        0.0633852556347847,
+        0.11217564344406128,
+        0.09250559955835343
+      ],
+      "rank_per_fold": [
+        20,
+        31,
+        26,
+        30
+      ]
+    },
+    {
+      "feature": "V15",
+      "mean_abs_contribution": 0.09443564489483834,
+      "mean_abs_contribution_on_frauds": 0.09386390317231416,
+      "per_fold": [
+        0.07721909284591674,
+        0.07622899115085602,
+        0.11220536381006241,
+        0.11208913177251816
+      ],
+      "rank_per_fold": [
+        27,
+        28,
+        25,
+        28
+      ]
+    }
+  ],
+  "metadata": {
+    "timestamp_utc": "2026-11-24T15:26:02+00:00",
+    "git_commit": "379efce4ef15f33fdd1b612e3b6999a9784c20f7",
+    "git_uncommitted_changes": true,
+    "data_sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+    "config": {
+      "seed": 42,
+      "data": {
+        "raw_path": "data/raw/creditcard.csv",
+        "sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+        "target": "Class",
+        "time_column": "Time"
+      },
+      "split": {
+        "test_fraction": 0.2,
+        "n_cv_folds": 4
+      },
+      "evaluation": {
+        "threshold": 0.5,
+        "max_fpr": 0.001,
+        "bootstrap_resamples": 1000,
+        "confidence_level": 0.95
+      },
+      "baseline_model": {
+        "n_estimators": 100
+      },
+      "model_selection": {
+        "feature_set": "hour_of_day",
+        "n_trials": {
+          "logistic_regression": 20,
+          "lightgbm": 30,
+          "xgboost": 30
+        },
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "resampling_ratio": 0.1,
+        "calibration_fraction": 0.2
+      },
+      "selected_model": {
+        "family": "xgboost",
+        "imbalance": "none",
+        "calibration": "sigmoid",
+        "params": {
+          "colsample_bytree": 0.6210276357557503,
+          "learning_rate": 0.05967212083511124,
+          "max_depth": 4,
+          "min_child_weight": 1.9551434125044704,
+          "n_estimators": 500,
+          "reg_lambda": 8.182111518618424,
+          "subsample": 0.6838915663596266
+        }
+      },
+      "simulation": {
+        "n_customers": 5000,
+        "n_terminals": 10000,
+        "n_days": 183,
+        "start_date": "2018-04-01",
+        "radius": 5.0,
+        "seed": 0
+      },
+      "behavioural": {
+        "windows_days": [
+          1,
+          7,
+          30
+        ],
+        "delay_days": 7,
+        "test_fraction": 0.2,
+        "n_cv_folds": 4,
+        "seeds": [
+          0,
+          1,
+          2
+        ],
+        "feature_sets": {
+          "raw": [
+            "raw"
+          ],
+          "raw_calendar": [
+            "raw",
+            "calendar"
+          ],
+          "raw_customer": [
+            "raw",
+            "customer"
+          ],
+          "raw_terminal": [
+            "raw",
+            "terminal"
+          ],
+          "all": [
+            "raw",
+            "calendar",
+            "customer",
+            "terminal"
+          ]
+        }
+      },
+      "cost": {
+        "decision_rule": "expected_cost",
+        "alert_cost": 10.0,
+        "sensitivity_alert_costs": [
+          5.0,
+          10.0,
+          25.0
+        ],
+        "amount_column": "Amount"
+      },
+      "results_dir": "results"
+    },
+    "environment": {
+      "python": "3.11.18",
+      "platform": "Linux-6.18.44-fc-v819-x86_64-with-glibc2.39",
+      "numpy": "2.4.3",
+      "pandas": "2.3.3",
+      "scikit-learn": "1.8.0"
+    }
+  }
+}

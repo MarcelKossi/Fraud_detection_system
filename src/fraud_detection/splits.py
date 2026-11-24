@@ -50,6 +50,45 @@ def expanding_window_folds(n_rows: int, n_folds: int) -> list[tuple[Indices, Ind
     return [(np.concatenate(blocks[: i + 1]), blocks[i + 1]) for i in range(n_folds)]
 
 
+def time_holdout(times: np.ndarray, test_fraction: float) -> tuple[Indices, Indices]:
+    """Split on the time axis: the last ``test_fraction`` of the period is the hold-out set.
+
+    Unlike :func:`temporal_holdout`, the cut is placed on elapsed time, not on the number
+    of rows, which suits data whose transaction rate is steady.
+    """
+    start, end = float(times.min()), float(times.max())
+    cut = start + (1.0 - test_fraction) * (end - start)
+    development = np.flatnonzero(times < cut)
+    holdout = np.flatnonzero(times >= cut)
+    if len(development) == 0 or len(holdout) == 0:
+        raise ValueError("The split leaves an empty development or hold-out set")
+    return development, holdout
+
+
+def expanding_time_folds(
+    times: np.ndarray, n_folds: int, gap: float
+) -> list[tuple[Indices, Indices]]:
+    """Expanding-window folds on the time axis, with a gap before each validation block.
+
+    The period is cut into ``n_folds + 1`` blocks of equal duration. Fold ``i`` validates
+    on block ``i + 1`` and trains on every transaction older than the start of that block
+    minus ``gap``. The gap represents the delay after which labels become available: a
+    model deployed at a given date cannot have been trained on the labels of the days
+    just before.
+    """
+    if n_folds < 1:
+        raise ValueError("n_folds must be at least 1")
+    edges = np.linspace(float(times.min()), float(times.max()) + 1.0, n_folds + 2)
+    folds = []
+    for i in range(n_folds):
+        train = np.flatnonzero(times < edges[i + 1] - gap)
+        validation = np.flatnonzero((times >= edges[i + 1]) & (times < edges[i + 2]))
+        if len(train) == 0 or len(validation) == 0:
+            raise ValueError("A fold is empty: reduce the gap or the number of folds")
+        folds.append((train, validation))
+    return folds
+
+
 def assert_chronological(times: np.ndarray, earlier: Indices, later: Indices) -> None:
     """Raise if any transaction of ``later`` precedes a transaction of ``earlier``."""
     if times[earlier].max() > times[later].min():

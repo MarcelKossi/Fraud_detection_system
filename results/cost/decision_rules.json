@@ -1,0 +1,337 @@
+{
+  "experiment": "cost_analysis",
+  "n_validation_transactions": 181584,
+  "n_validation_frauds": 257,
+  "no_detection_cost": 37005.63,
+  "fraud_amount_quantiles": {
+    "0.25": 1.0,
+    "0.5": 18.98,
+    "0.75": 153.46,
+    "0.9": 447.01000000000005
+  },
+  "fraud_amount_share_below_alert_cost": {
+    "5": 0.40077821011673154,
+    "10": 0.4708171206225681,
+    "25": 0.5291828793774319
+  },
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "alert_costs": {
+    "5": {
+      "alert_cost": 5.0,
+      "rules": {
+        "default_threshold": {
+          "cost": 12594.064,
+          "savings": 0.6596716769853668,
+          "n_alerts": 210.6,
+          "alerts_per_100k": 115.97938144329896,
+          "precision": 0.8737618253262946,
+          "recall": 0.715953307392996
+        },
+        "cost_optimal_threshold": {
+          "cost": 12590.975999999999,
+          "savings": 0.6597551237473865,
+          "n_alerts": 359.8,
+          "alerts_per_100k": 198.14521103180897,
+          "precision": 0.5657686016246611,
+          "recall": 0.7859922178988328
+        },
+        "expected_cost": {
+          "cost": 10744.251999999999,
+          "savings": 0.7096589897266983,
+          "n_alerts": 366.8,
+          "alerts_per_100k": 202.0001762269804,
+          "precision": 0.3273147203684251,
+          "recall": 0.4669260700389105
+        }
+      },
+      "savings_per_fold": {
+        "default_threshold": [
+          0.7533700442563729,
+          0.7832303033967131,
+          0.4468487574287757,
+          0.7054542284184349
+        ],
+        "cost_optimal_threshold": [
+          0.7763514824498998,
+          0.7711639611861794,
+          0.43117211996820776,
+          0.7120626433862627
+        ],
+        "expected_cost": [
+          0.7789793778237691,
+          0.7803850145602207,
+          0.5592585356230307,
+          0.7526427678579575
+        ]
+      },
+      "savings_seed_std": {
+        "default_threshold": 0.0010731994105480042,
+        "cost_optimal_threshold": 0.008544365100436064,
+        "expected_cost": 0.006379249305146547
+      },
+      "cost_optimal_threshold_mean": 0.12259989225590931,
+      "cost_optimal_threshold_range": [
+        0.027882457481436404,
+        0.48738661936787203
+      ],
+      "oracle": {
+        "cost": 876.8599999999999,
+        "savings": 0.9763046866111994
+      }
+    },
+    "10": {
+      "alert_cost": 10.0,
+      "rules": {
+        "default_threshold": {
+          "cost": 13647.064000000002,
+          "savings": 0.6312165473199618,
+          "n_alerts": 210.6,
+          "alerts_per_100k": 115.97938144329896,
+          "precision": 0.8737618253262946,
+          "recall": 0.715953307392996
+        },
+        "cost_optimal_threshold": {
+          "cost": 13955.806,
+          "savings": 0.6228734384470688,
+          "n_alerts": 254.8,
+          "alerts_per_100k": 140.32073310423826,
+          "precision": 0.7494658881923058,
+          "recall": 0.7385214007782102
+        },
+        "expected_cost": {
+          "cost": 12475.66,
+          "savings": 0.6628712982321879,
+          "n_alerts": 243.2,
+          "alerts_per_100k": 133.93250506652566,
+          "precision": 0.4352476555622391,
+          "recall": 0.41167315175097274
+        }
+      },
+      "savings_per_fold": {
+        "default_threshold": [
+          0.7265759980782203,
+          0.7613144000080609,
+          0.40597033611357186,
+          0.6835566179951723
+        ],
+        "cost_optimal_threshold": [
+          0.7207161863756897,
+          0.7578884656852372,
+          0.38510545873935126,
+          0.6824601154287928
+        ],
+        "expected_cost": [
+          0.7487245110086573,
+          0.7643763288090847,
+          0.4703531857663424,
+          0.711587586893469
+        ]
+      },
+      "savings_seed_std": {
+        "default_threshold": 0.0012253127156457112,
+        "cost_optimal_threshold": 0.013866319911972201,
+        "expected_cost": 0.00591237748715575
+      },
+      "cost_optimal_threshold_mean": 0.3438430451573741,
+      "cost_optimal_threshold_range": [
+        0.05226048831316701,
+        0.8225074157944249
+      ],
+      "oracle": {
+        "cost": 1604.12,
+        "savings": 0.9566520013306083
+      }
+    },
+    "25": {
+      "alert_cost": 25.0,
+      "rules": {
+        "default_threshold": {
+          "cost": 16806.064000000002,
+          "savings": 0.545851158323747,
+          "n_alerts": 210.6,
+          "alerts_per_100k": 115.97938144329896,
+          "precision": 0.8737618253262946,
+          "recall": 0.715953307392996
+        },
+        "cost_optimal_threshold": {
+          "cost": 17387.016,
+          "savings": 0.5301521417146525,
+          "n_alerts": 203.6,
+          "alerts_per_100k": 112.12441624812759,
+          "precision": 0.86591188929415,
+          "recall": 0.6856031128404669
+        },
+        "expected_cost": {
+          "cost": 14585.707999999999,
+          "savings": 0.6058516501408029,
+          "n_alerts": 151.2,
+          "alerts_per_100k": 83.26724821570181,
+          "precision": 0.6119261577243934,
+          "recall": 0.3595330739299611
+        }
+      },
+      "savings_per_fold": {
+        "default_threshold": [
+          0.6461938595437622,
+          0.6955666898421046,
+          0.28333507216796006,
+          0.6178637867253846
+        ],
+        "cost_optimal_threshold": [
+          0.5798451026951115,
+          0.6949117318098003,
+          0.27818989212269973,
+          0.6232353922156022
+        ],
+        "expected_cost": [
+          0.6797411602745929,
+          0.7280412724323125,
+          0.3914301377346715,
+          0.6718328806813401
+        ]
+      },
+      "savings_seed_std": {
+        "default_threshold": 0.0019547143275624747,
+        "cost_optimal_threshold": 0.010098849776860291,
+        "expected_cost": 0.008835015849486242
+      },
+      "cost_optimal_threshold_mean": 0.5723620893140288,
+      "cost_optimal_threshold_range": [
+        0.3077799825855252,
+        0.8225074157944249
+      ],
+      "oracle": {
+        "cost": 3546.08,
+        "savings": 0.9041745810029447
+      }
+    }
+  },
+  "metadata": {
+    "timestamp_utc": "2026-11-24T13:49:45+00:00",
+    "git_commit": "fddb185e32bfd67d9324fe15ab95418009eaf103",
+    "git_uncommitted_changes": true,
+    "data_sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+    "config": {
+      "seed": 42,
+      "data": {
+        "raw_path": "data/raw/creditcard.csv",
+        "sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+        "target": "Class",
+        "time_column": "Time"
+      },
+      "split": {
+        "test_fraction": 0.2,
+        "n_cv_folds": 4
+      },
+      "evaluation": {
+        "threshold": 0.5,
+        "max_fpr": 0.001,
+        "bootstrap_resamples": 1000,
+        "confidence_level": 0.95
+      },
+      "baseline_model": {
+        "n_estimators": 100
+      },
+      "model_selection": {
+        "feature_set": "hour_of_day",
+        "n_trials": {
+          "logistic_regression": 20,
+          "lightgbm": 30,
+          "xgboost": 30
+        },
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "resampling_ratio": 0.1,
+        "calibration_fraction": 0.2
+      },
+      "selected_model": {
+        "family": "xgboost",
+        "imbalance": "none",
+        "calibration": "sigmoid",
+        "params": {
+          "colsample_bytree": 0.6210276357557503,
+          "learning_rate": 0.05967212083511124,
+          "max_depth": 4,
+          "min_child_weight": 1.9551434125044704,
+          "n_estimators": 500,
+          "reg_lambda": 8.182111518618424,
+          "subsample": 0.6838915663596266
+        }
+      },
+      "simulation": {
+        "n_customers": 5000,
+        "n_terminals": 10000,
+        "n_days": 183,
+        "start_date": "2018-04-01",
+        "radius": 5.0,
+        "seed": 0
+      },
+      "behavioural": {
+        "windows_days": [
+          1,
+          7,
+          30
+        ],
+        "delay_days": 7,
+        "test_fraction": 0.2,
+        "n_cv_folds": 4,
+        "seeds": [
+          0,
+          1,
+          2
+        ],
+        "feature_sets": {
+          "raw": [
+            "raw"
+          ],
+          "raw_calendar": [
+            "raw",
+            "calendar"
+          ],
+          "raw_customer": [
+            "raw",
+            "customer"
+          ],
+          "raw_terminal": [
+            "raw",
+            "terminal"
+          ],
+          "all": [
+            "raw",
+            "calendar",
+            "customer",
+            "terminal"
+          ]
+        }
+      },
+      "cost": {
+        "alert_cost": 10.0,
+        "sensitivity_alert_costs": [
+          5.0,
+          10.0,
+          25.0
+        ],
+        "amount_column": "Amount"
+      },
+      "results_dir": "results"
+    },
+    "environment": {
+      "python": "3.11.18",
+      "platform": "Linux-6.18.44-fc-v819-x86_64-with-glibc2.39",
+      "numpy": "2.4.3",
+      "pandas": "2.3.3",
+      "scikit-learn": "1.8.0"
+    }
+  }
+}

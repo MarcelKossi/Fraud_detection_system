@@ -1,0 +1,916 @@
+{
+  "experiment": "behavioural_feature_ablation",
+  "simulated_table_sha256": "1a745645628a6cf0a9deeda1f8ab4c81130d7265c6f8e5725f89499096bbbb1c",
+  "dataset": {
+    "n_transactions": 1793343,
+    "n_frauds": 15268,
+    "fraud_rate": 0.008513708755101506,
+    "frauds_by_scenario": {
+      "amount above threshold": 1109,
+      "compromised terminal": 9268,
+      "compromised customer": 4891
+    },
+    "first_datetime": "2018-04-01 00:01:21",
+    "last_datetime": "2018-09-30 23:59:51"
+  },
+  "development": {
+    "n_transactions": 1434506,
+    "n_frauds": 12026,
+    "fraud_rate": 0.008383373788607366,
+    "frauds_by_scenario": {
+      "amount above threshold": 903,
+      "compromised terminal": 7270,
+      "compromised customer": 3853
+    },
+    "first_datetime": "2018-04-01 00:01:21",
+    "last_datetime": "2018-08-25 09:36:06"
+  },
+  "holdout": {
+    "n_transactions": 358837,
+    "evaluated": false
+  },
+  "folds": [
+    {
+      "n_train": 217481,
+      "n_train_frauds": 1129,
+      "n_validation": 288764,
+      "n_validation_frauds": 2630
+    },
+    {
+      "n_train": 505550,
+      "n_train_frauds": 3684,
+      "n_validation": 286933,
+      "n_validation_frauds": 2573
+    },
+    {
+      "n_train": 793589,
+      "n_train_frauds": 6364,
+      "n_validation": 285458,
+      "n_validation_frauds": 2467
+    },
+    {
+      "n_train": 1078799,
+      "n_train_frauds": 8768,
+      "n_validation": 287209,
+      "n_validation_frauds": 2619
+    }
+  ],
+  "model": {
+    "family": "xgboost",
+    "params": {
+      "colsample_bytree": 0.6210276357557503,
+      "learning_rate": 0.05967212083511124,
+      "max_depth": 4,
+      "min_child_weight": 1.9551434125044704,
+      "n_estimators": 500,
+      "reg_lambda": 8.182111518618424,
+      "subsample": 0.6838915663596266
+    }
+  },
+  "feature_sets": {
+    "raw": {
+      "groups": [
+        "raw"
+      ],
+      "n_features": 3,
+      "auprc_mean": 0.16409241140130906,
+      "auprc_seed_std": 6.693314618483144e-05,
+      "auprc_per_fold": [
+        0.14219675305834878,
+        0.16027231809224007,
+        0.17848700043962398,
+        0.17541357401502333
+      ],
+      "recall_at_fpr_mean": 0.1390249805320041,
+      "recall_by_scenario": {
+        "amount above threshold": 0.5410574569611305,
+        "compromised terminal": 0.001252861931307954,
+        "compromised customer": 0.32374087657246636
+      },
+      "runs": [
+        {
+          "seed": 0,
+          "folds": [
+            {
+              "auprc": 0.1418673310610625,
+              "recall_at_fpr": 0.11368821292775666,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5106382978723404,
+                "compromised terminal": 0.0011827321111768185,
+                "compromised customer": 0.26764314247669774
+              }
+            },
+            {
+              "auprc": 0.15972119969341503,
+              "recall_at_fpr": 0.1352506801399145,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5491329479768786,
+                "compromised terminal": 0.0012626262626262627,
+                "compromised customer": 0.3075980392156863
+              }
+            },
+            {
+              "auprc": 0.1784195710447431,
+              "recall_at_fpr": 0.15565464126469397,
+              "recall_by_scenario": {
+                "amount above threshold": 0.4971751412429379,
+                "compromised terminal": 0.0012978585334198572,
+                "compromised customer": 0.3925233644859813
+              }
+            },
+            {
+              "auprc": 0.17607851371829608,
+              "recall_at_fpr": 0.15120274914089346,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5863874345549738,
+                "compromised terminal": 0.0012682308180088776,
+                "compromised customer": 0.33137485311398357
+              }
+            }
+          ]
+        },
+        {
+          "seed": 1,
+          "folds": [
+            {
+              "auprc": 0.1426094291129046,
+              "recall_at_fpr": 0.11216730038022814,
+              "recall_by_scenario": {
+                "amount above threshold": 0.4946808510638298,
+                "compromised terminal": 0.0011827321111768185,
+                "compromised customer": 0.2663115845539281
+              }
+            },
+            {
+              "auprc": 0.15990824389989822,
+              "recall_at_fpr": 0.14185775359502525,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5722543352601156,
+                "compromised terminal": 0.0012626262626262627,
+                "compromised customer": 0.3235294117647059
+              }
+            },
+            {
+              "auprc": 0.17898638201192285,
+              "recall_at_fpr": 0.15443858937981353,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5423728813559322,
+                "compromised terminal": 0.0012978585334198572,
+                "compromised customer": 0.37783711615487314
+              }
+            },
+            {
+              "auprc": 0.17489939669245047,
+              "recall_at_fpr": 0.1561664757541046,
+              "recall_by_scenario": {
+                "amount above threshold": 0.612565445026178,
+                "compromised terminal": 0.0012682308180088776,
+                "compromised customer": 0.3407755581668625
+              }
+            }
+          ]
+        },
+        {
+          "seed": 2,
+          "folds": [
+            {
+              "auprc": 0.14211349900107925,
+              "recall_at_fpr": 0.11102661596958174,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5,
+                "compromised terminal": 0.0011827321111768185,
+                "compromised customer": 0.2609853528628495
+              }
+            },
+            {
+              "auprc": 0.16118751068340698,
+              "recall_at_fpr": 0.1360279828993393,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5317919075144508,
+                "compromised terminal": 0.0012626262626262627,
+                "compromised customer": 0.3137254901960784
+              }
+            },
+            {
+              "auprc": 0.17805504826220603,
+              "recall_at_fpr": 0.1568706931495744,
+              "recall_by_scenario": {
+                "amount above threshold": 0.519774011299435,
+                "compromised terminal": 0.0012978585334198572,
+                "compromised customer": 0.39118825100133514
+              }
+            },
+            {
+              "auprc": 0.17526281163432347,
+              "recall_at_fpr": 0.14394807178312333,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5759162303664922,
+                "compromised terminal": 0.0012682308180088776,
+                "compromised customer": 0.31139835487661577
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "raw_calendar": {
+      "groups": [
+        "raw",
+        "calendar"
+      ],
+      "n_features": 5,
+      "auprc_mean": 0.16263002278989053,
+      "auprc_seed_std": 0.000472462875844619,
+      "auprc_per_fold": [
+        0.1431626331246358,
+        0.16107497091625375,
+        0.17286369723599274,
+        0.1734187898826797
+      ],
+      "recall_at_fpr_mean": 0.13926434503008808,
+      "recall_by_scenario": {
+        "amount above threshold": 0.5451324212154484,
+        "compromised terminal": 0.0009321007623793622,
+        "compromised customer": 0.32387691306411387
+      },
+      "runs": [
+        {
+          "seed": 0,
+          "folds": [
+            {
+              "auprc": 0.14272391342324695,
+              "recall_at_fpr": 0.11444866920152091,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5,
+                "compromised terminal": 0.0011827321111768185,
+                "compromised customer": 0.2729693741677763
+              }
+            },
+            {
+              "auprc": 0.1598033953759558,
+              "recall_at_fpr": 0.1368052856587641,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5202312138728323,
+                "compromised terminal": 0.0012626262626262627,
+                "compromised customer": 0.31862745098039214
+              }
+            },
+            {
+              "auprc": 0.17315962532570392,
+              "recall_at_fpr": 0.14552087555735713,
+              "recall_by_scenario": {
+                "amount above threshold": 0.4915254237288136,
+                "compromised terminal": 0.0006489292667099286,
+                "compromised customer": 0.36181575433911883
+              }
+            },
+            {
+              "auprc": 0.17285604988299397,
+              "recall_at_fpr": 0.15960290187094311,
+              "recall_by_scenario": {
+                "amount above threshold": 0.6335078534031413,
+                "compromised terminal": 0.0006341154090044388,
+                "compromised customer": 0.34782608695652173
+              }
+            }
+          ]
+        },
+        {
+          "seed": 1,
+          "folds": [
+            {
+              "auprc": 0.14322086048104873,
+              "recall_at_fpr": 0.11102661596958174,
+              "recall_by_scenario": {
+                "amount above threshold": 0.4734042553191489,
+                "compromised terminal": 0.0011827321111768185,
+                "compromised customer": 0.26764314247669774
+              }
+            },
+            {
+              "auprc": 0.16169891195650543,
+              "recall_at_fpr": 0.1371939370384765,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5780346820809249,
+                "compromised terminal": 0.0012626262626262627,
+                "compromised customer": 0.3075980392156863
+              }
+            },
+            {
+              "auprc": 0.17357846333418114,
+              "recall_at_fpr": 0.14835832995541143,
+              "recall_by_scenario": {
+                "amount above threshold": 0.4915254237288136,
+                "compromised terminal": 0.0006489292667099286,
+                "compromised customer": 0.3711615487316422
+              }
+            },
+            {
+              "auprc": 0.17381029907358436,
+              "recall_at_fpr": 0.16418480336006108,
+              "recall_by_scenario": {
+                "amount above threshold": 0.6910994764397905,
+                "compromised terminal": 0.0006341154090044388,
+                "compromised customer": 0.3490011750881316
+              }
+            }
+          ]
+        },
+        {
+          "seed": 2,
+          "folds": [
+            {
+              "auprc": 0.14354312546961176,
+              "recall_at_fpr": 0.11406844106463879,
+              "recall_by_scenario": {
+                "amount above threshold": 0.4946808510638298,
+                "compromised terminal": 0.0011827321111768185,
+                "compromised customer": 0.2729693741677763
+              }
+            },
+            {
+              "auprc": 0.16172260541630007,
+              "recall_at_fpr": 0.1348620287602021,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5260115606936416,
+                "compromised terminal": 0.0012626262626262627,
+                "compromised customer": 0.3112745098039216
+              }
+            },
+            {
+              "auprc": 0.17185300304809314,
+              "recall_at_fpr": 0.14511552492906363,
+              "recall_by_scenario": {
+                "amount above threshold": 0.5028248587570622,
+                "compromised terminal": 0.0006489292667099286,
+                "compromised customer": 0.35781041388518026
+              }
+            },
+            {
+              "auprc": 0.17359002069146084,
+              "recall_at_fpr": 0.15998472699503627,
+              "recall_by_scenario": {
+                "amount above threshold": 0.6387434554973822,
+                "compromised terminal": 0.0006341154090044388,
+                "compromised customer": 0.34782608695652173
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "raw_customer": {
+      "groups": [
+        "raw",
+        "customer"
+      ],
+      "n_features": 12,
+      "auprc_mean": 0.3491977669102056,
+      "auprc_seed_std": 0.0002592294893607451,
+      "auprc_per_fold": [
+        0.31503135865181336,
+        0.362622307684407,
+        0.34661952778012833,
+        0.3725178735244739
+      ],
+      "recall_at_fpr_mean": 0.3227186021987976,
+      "recall_by_scenario": {
+        "amount above threshold": 0.9760101355355936,
+        "compromised terminal": 0.0017651065967746922,
+        "compromised customer": 0.8190398737844228
+      },
+      "runs": [
+        {
+          "seed": 0,
+          "folds": [
+            {
+              "auprc": 0.3141878630306538,
+              "recall_at_fpr": 0.28821292775665397,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9468085106382979,
+                "compromised terminal": 0.002365464222353637,
+                "compromised customer": 0.7669773635153129
+              }
+            },
+            {
+              "auprc": 0.3627460404241048,
+              "recall_at_fpr": 0.33424018655266224,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9826589595375722,
+                "compromised terminal": 0.001893939393939394,
+                "compromised customer": 0.8419117647058824
+              }
+            },
+            {
+              "auprc": 0.3463749721654466,
+              "recall_at_fpr": 0.3222537494933117,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9943502824858758,
+                "compromised terminal": 0.0006489292667099286,
+                "compromised customer": 0.8251001335113485
+              }
+            },
+            {
+              "auprc": 0.37246670494535356,
+              "recall_at_fpr": 0.3444062619320351,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9842931937172775,
+                "compromised terminal": 0.0025364616360177552,
+                "compromised customer": 0.8343125734430082
+              }
+            }
+          ]
+        },
+        {
+          "seed": 1,
+          "folds": [
+            {
+              "auprc": 0.31479285536774376,
+              "recall_at_fpr": 0.2908745247148289,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9574468085106383,
+                "compromised terminal": 0.0017740981667652277,
+                "compromised customer": 0.7749667110519307
+              }
+            },
+            {
+              "auprc": 0.36260162216451564,
+              "recall_at_fpr": 0.33579479207151186,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9826589595375722,
+                "compromised terminal": 0.001893939393939394,
+                "compromised customer": 0.8468137254901961
+              }
+            },
+            {
+              "auprc": 0.34620597096167777,
+              "recall_at_fpr": 0.3206323469801378,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9774011299435028,
+                "compromised terminal": 0.0012978585334198572,
+                "compromised customer": 0.822429906542056
+              }
+            },
+            {
+              "auprc": 0.37314901001960477,
+              "recall_at_fpr": 0.344024436807942,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9947643979057592,
+                "compromised terminal": 0.0019023462270133164,
+                "compromised customer": 0.8319623971797885
+              }
+            }
+          ]
+        },
+        {
+          "seed": 2,
+          "folds": [
+            {
+              "auprc": 0.31611335755704256,
+              "recall_at_fpr": 0.29011406844106463,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9308510638297872,
+                "compromised terminal": 0.0017740981667652277,
+                "compromised customer": 0.7789613848202397
+              }
+            },
+            {
+              "auprc": 0.3625192604646006,
+              "recall_at_fpr": 0.33696074621064903,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9826589595375722,
+                "compromised terminal": 0.001893939393939394,
+                "compromised customer": 0.8504901960784313
+              }
+            },
+            {
+              "auprc": 0.3472776402132606,
+              "recall_at_fpr": 0.32184839886501826,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9887005649717514,
+                "compromised terminal": 0.0012978585334198572,
+                "compromised customer": 0.8237650200267023
+              }
+            },
+            {
+              "auprc": 0.3719379056084635,
+              "recall_at_fpr": 0.3432607865597556,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9895287958115183,
+                "compromised terminal": 0.0019023462270133164,
+                "compromised customer": 0.8307873090481787
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "raw_terminal": {
+      "groups": [
+        "raw",
+        "terminal"
+      ],
+      "n_features": 9,
+      "auprc_mean": 0.590479904998294,
+      "auprc_seed_std": 0.0007315145524238464,
+      "auprc_per_fold": [
+        0.4263244583333547,
+        0.6329728622859764,
+        0.6500136624414045,
+        0.6526086369324403
+      ],
+      "recall_at_fpr_mean": 0.41886379429865683,
+      "recall_by_scenario": {
+        "amount above threshold": 0.27497755449969236,
+        "compromised terminal": 0.5589572488346093,
+        "compromised customer": 0.17106666166339465
+      },
+      "runs": [
+        {
+          "seed": 0,
+          "folds": [
+            {
+              "auprc": 0.4292179327378498,
+              "recall_at_fpr": 0.21102661596958175,
+              "recall_by_scenario": {
+                "amount above threshold": 0.0,
+                "compromised terminal": 0.3264340626848019,
+                "compromised customer": 0.0039946737683089215
+              }
+            },
+            {
+              "auprc": 0.6336079506096814,
+              "recall_at_fpr": 0.4865915273999223,
+              "recall_by_scenario": {
+                "amount above threshold": 0.3872832369942196,
+                "compromised terminal": 0.6338383838383839,
+                "compromised customer": 0.22181372549019607
+              }
+            },
+            {
+              "auprc": 0.649472818212586,
+              "recall_at_fpr": 0.4791244426428861,
+              "recall_by_scenario": {
+                "amount above threshold": 0.3559322033898305,
+                "compromised terminal": 0.6268656716417911,
+                "compromised customer": 0.20427236315086783
+              }
+            },
+            {
+              "auprc": 0.6527615512818125,
+              "recall_at_fpr": 0.5166093928980527,
+              "recall_by_scenario": {
+                "amount above threshold": 0.418848167539267,
+                "compromised terminal": 0.667723525681674,
+                "compromised customer": 0.25851938895417154
+              }
+            }
+          ]
+        },
+        {
+          "seed": 1,
+          "folds": [
+            {
+              "auprc": 0.4227146101756762,
+              "recall_at_fpr": 0.19771863117870722,
+              "recall_by_scenario": {
+                "amount above threshold": 0.0,
+                "compromised terminal": 0.30573625073920757,
+                "compromised customer": 0.0039946737683089215
+              }
+            },
+            {
+              "auprc": 0.6339481938826131,
+              "recall_at_fpr": 0.4869801787796347,
+              "recall_by_scenario": {
+                "amount above threshold": 0.3930635838150289,
+                "compromised terminal": 0.6281565656565656,
+                "compromised customer": 0.23284313725490197
+              }
+            },
+            {
+              "auprc": 0.6500266239459965,
+              "recall_at_fpr": 0.4758816376165383,
+              "recall_by_scenario": {
+                "amount above threshold": 0.3050847457627119,
+                "compromised terminal": 0.6242699545749514,
+                "compromised customer": 0.2109479305740988
+              }
+            },
+            {
+              "auprc": 0.6525809243939211,
+              "recall_at_fpr": 0.5135547919053074,
+              "recall_by_scenario": {
+                "amount above threshold": 0.418848167539267,
+                "compromised terminal": 0.6651870640456563,
+                "compromised customer": 0.25381903642773207
+              }
+            }
+          ]
+        },
+        {
+          "seed": 2,
+          "folds": [
+            {
+              "auprc": 0.4270408320865379,
+              "recall_at_fpr": 0.20152091254752852,
+              "recall_by_scenario": {
+                "amount above threshold": 0.0,
+                "compromised terminal": 0.3116499112950917,
+                "compromised customer": 0.0039946737683089215
+              }
+            },
+            {
+              "auprc": 0.6313624423656344,
+              "recall_at_fpr": 0.46871356393315194,
+              "recall_by_scenario": {
+                "amount above threshold": 0.28901734104046245,
+                "compromised terminal": 0.6287878787878788,
+                "compromised customer": 0.19607843137254902
+              }
+            },
+            {
+              "auprc": 0.650541545165631,
+              "recall_at_fpr": 0.4819618970409404,
+              "recall_by_scenario": {
+                "amount above threshold": 0.3389830508474576,
+                "compromised terminal": 0.6249188838416613,
+                "compromised customer": 0.22162883845126835
+              }
+            },
+            {
+              "auprc": 0.6524834351215874,
+              "recall_at_fpr": 0.5066819396716304,
+              "recall_by_scenario": {
+                "amount above threshold": 0.39267015706806285,
+                "compromised terminal": 0.6639188332276474,
+                "compromised customer": 0.2408930669800235
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "all": {
+      "groups": [
+        "raw",
+        "calendar",
+        "customer",
+        "terminal"
+      ],
+      "n_features": 20,
+      "auprc_mean": 0.7173860299412067,
+      "auprc_seed_std": 0.002535810121160699,
+      "auprc_per_fold": [
+        0.5554119808011542,
+        0.7665342653838924,
+        0.7616046017493621,
+        0.7859932718304184
+      ],
+      "recall_at_fpr_mean": 0.6180314003289068,
+      "recall_by_scenario": {
+        "amount above threshold": 0.6839315427759242,
+        "compromised terminal": 0.5780636821469858,
+        "compromised customer": 0.681926391035358
+      },
+      "runs": [
+        {
+          "seed": 0,
+          "folds": [
+            {
+              "auprc": 0.5550047144414546,
+              "recall_at_fpr": 0.2935361216730038,
+              "recall_by_scenario": {
+                "amount above threshold": 0.010638297872340425,
+                "compromised terminal": 0.3169722057953873,
+                "compromised customer": 0.31158455392809586
+              }
+            },
+            {
+              "auprc": 0.767758692548685,
+              "recall_at_fpr": 0.7186164010882239,
+              "recall_by_scenario": {
+                "amount above threshold": 0.884393063583815,
+                "compromised terminal": 0.6578282828282829,
+                "compromised customer": 0.8014705882352942
+              }
+            },
+            {
+              "auprc": 0.7625881991164319,
+              "recall_at_fpr": 0.7235508715038508,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9491525423728814,
+                "compromised terminal": 0.6567164179104478,
+                "compromised customer": 0.807743658210948
+              }
+            },
+            {
+              "auprc": 0.7865222194705676,
+              "recall_at_fpr": 0.7418862161130202,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9424083769633508,
+                "compromised terminal": 0.689283449587825,
+                "compromised customer": 0.7943595769682726
+              }
+            }
+          ]
+        },
+        {
+          "seed": 1,
+          "folds": [
+            {
+              "auprc": 0.5461593796851879,
+              "recall_at_fpr": 0.28783269961977187,
+              "recall_by_scenario": {
+                "amount above threshold": 0.0,
+                "compromised terminal": 0.306327616794796,
+                "compromised customer": 0.3182423435419441
+              }
+            },
+            {
+              "auprc": 0.7655544648675798,
+              "recall_at_fpr": 0.7123979790128255,
+              "recall_by_scenario": {
+                "amount above threshold": 0.8208092485549133,
+                "compromised terminal": 0.6571969696969697,
+                "compromised customer": 0.7965686274509803
+              }
+            },
+            {
+              "auprc": 0.7611331832236757,
+              "recall_at_fpr": 0.7199027158492096,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9265536723163842,
+                "compromised terminal": 0.6554185593770279,
+                "compromised customer": 0.8037383177570093
+              }
+            },
+            {
+              "auprc": 0.7855916817210755,
+              "recall_at_fpr": 0.7415043909889271,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9424083769633508,
+                "compromised terminal": 0.6873811033608117,
+                "compromised customer": 0.7967097532314924
+              }
+            }
+          ]
+        },
+        {
+          "seed": 2,
+          "folds": [
+            {
+              "auprc": 0.56507184827682,
+              "recall_at_fpr": 0.296958174904943,
+              "recall_by_scenario": {
+                "amount above threshold": 0.010638297872340425,
+                "compromised terminal": 0.30514488468361917,
+                "compromised customer": 0.35019973368841545
+              }
+            },
+            {
+              "auprc": 0.7662896387354126,
+              "recall_at_fpr": 0.7174504469490867,
+              "recall_by_scenario": {
+                "amount above threshold": 0.861271676300578,
+                "compromised terminal": 0.6571969696969697,
+                "compromised customer": 0.803921568627451
+              }
+            },
+            {
+              "auprc": 0.7610924229079784,
+              "recall_at_fpr": 0.7231455208755574,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9322033898305084,
+                "compromised terminal": 0.6580142764438677,
+                "compromised customer": 0.807743658210948
+              }
+            },
+            {
+              "auprc": 0.7858659142996122,
+              "recall_at_fpr": 0.7395952653684612,
+              "recall_by_scenario": {
+                "amount above threshold": 0.9267015706806283,
+                "compromised terminal": 0.689283449587825,
+                "compromised customer": 0.790834312573443
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "timestamp_utc": "2026-11-24T10:56:24+00:00",
+    "git_commit": "735a349de2b176d548fe8c78c42d51fee0899c6a",
+    "git_uncommitted_changes": true,
+    "data_sha256": "1a745645628a6cf0a9deeda1f8ab4c81130d7265c6f8e5725f89499096bbbb1c",
+    "config": {
+      "seed": 42,
+      "data": {
+        "raw_path": "data/raw/creditcard.csv",
+        "sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+        "target": "Class",
+        "time_column": "Time"
+      },
+      "split": {
+        "test_fraction": 0.2,
+        "n_cv_folds": 4
+      },
+      "evaluation": {
+        "threshold": 0.5,
+        "max_fpr": 0.001,
+        "bootstrap_resamples": 1000,
+        "confidence_level": 0.95
+      },
+      "baseline_model": {
+        "n_estimators": 100
+      },
+      "model_selection": {
+        "feature_set": "hour_of_day",
+        "n_trials": {
+          "logistic_regression": 20,
+          "lightgbm": 30,
+          "xgboost": 30
+        },
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "resampling_ratio": 0.1,
+        "calibration_fraction": 0.2
+      },
+      "selected_model": {
+        "family": "xgboost",
+        "imbalance": "none",
+        "calibration": "sigmoid",
+        "params": {
+          "colsample_bytree": 0.6210276357557503,
+          "learning_rate": 0.05967212083511124,
+          "max_depth": 4,
+          "min_child_weight": 1.9551434125044704,
+          "n_estimators": 500,
+          "reg_lambda": 8.182111518618424,
+          "subsample": 0.6838915663596266
+        }
+      },
+      "simulation": {
+        "n_customers": 5000,
+        "n_terminals": 10000,
+        "n_days": 183,
+        "start_date": "2018-04-01",
+        "radius": 5.0,
+        "seed": 0
+      },
+      "behavioural": {
+        "windows_days": [
+          1,
+          7,
+          30
+        ],
+        "delay_days": 7,
+        "test_fraction": 0.2,
+        "n_cv_folds": 4,
+        "seeds": [
+          0,
+          1,
+          2
+        ],
+        "feature_sets": {
+          "raw": [
+            "raw"
+          ],
+          "raw_calendar": [
+            "raw",
+            "calendar"
+          ],
+          "raw_customer": [
+            "raw",
+            "customer"
+          ],
+          "raw_terminal": [
+            "raw",
+            "terminal"
+          ],
+          "all": [
+            "raw",
+            "calendar",
+            "customer",
+            "terminal"
+          ]
+        }
+      },
+      "results_dir": "results"
+    },
+    "environment": {
+      "python": "3.11.18",
+      "platform": "Linux-6.18.44-fc-v819-x86_64-with-glibc2.39",
+      "numpy": "2.4.3",
+      "pandas": "2.3.3",
+      "scikit-learn": "1.8.0"
+    }
+  }
+}

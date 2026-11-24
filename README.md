@@ -5,8 +5,10 @@ Supervised detection of fraudulent card transactions on a highly imbalanced data
 transactions, with the aim of a deployable prototype: a trained and calibrated model,
 a validated REST API and an interactive dashboard.
 
-> **Status — version 2 in progress.** Steps 1 and 2 of the roadmap below are complete:
-> evaluation protocol, reference measurements and model selection. The serving layer
+> **Status — version 2 in progress.** Steps 1 to 5 of the roadmap below are complete:
+> evaluation protocol, reference measurements, model selection, behavioural features,
+> cost-based decision rule and explanation of predictions.
+> The serving layer
 > (`api/`, `dashboard/`) still dates from the first version and is rewritten in step 6.
 > The first version is preserved under the tag `v0-legacy`.
 
@@ -99,6 +101,105 @@ the last part. Sigmoid calibration lowers the Brier score without altering the r
 of the transactions. Isotonic calibration, fitted on a few tens of frauds, introduces
 ties that degrade the ranking.
 
+### 5. Behavioural features are decisive when card and terminal histories are available
+
+The main dataset carries no identifier, so features describing the habits of a customer
+or the recent history of a terminal cannot be built on it. They are studied on simulated
+transactions that follow the specification of the *Fraud Detection Handbook* simulator
+(about 1.8 million transactions over six months, three fraud scenarios). The retained
+model is cross-validated with each group of features; each training window ends seven
+days before its validation period, the delay after which labels are assumed known.
+
+<!-- BEGIN:behavioural -->
+| Feature set | Features | AUPRC, mean over seeds (std) | Recall at FPR ≤ 0.1% | Recall, amount above threshold | Recall, compromised terminal | Recall, compromised customer |
+|---|---|---|---|---|---|---|
+| Amount and time of day | 3 | 0.164 (0.000) | 0.139 | 0.541 | 0.001 | 0.324 |
+| + calendar flags | 5 | 0.163 (0.000) | 0.139 | 0.545 | 0.001 | 0.324 |
+| + customer aggregates | 12 | 0.349 (0.000) | 0.323 | 0.976 | 0.002 | 0.819 |
+| + terminal aggregates | 9 | 0.590 (0.001) | 0.419 | 0.275 | 0.559 | 0.171 |
+| All groups | 20 | 0.717 (0.003) | 0.618 | 0.684 | 0.578 | 0.682 |
+<!-- END:behavioural -->
+
+The last three columns give, for each fraud scenario, the share of frauds flagged at
+the same false-positive rate. Frauds on compromised terminals are invisible without the
+terminal history and more than half are caught with it; customer aggregates raise the
+detection of frauds on compromised customers. Calendar flags bring nothing. With all
+groups together, AUPRC is highest, but the detection of the first and third scenarios
+at this false-positive rate is lower than with customer aggregates alone.
+
+These figures must be read with three reservations. The data are synthetic and the
+fraud scenarios were designed so that such features are informative: the experiment
+validates the feature pipeline and its point-in-time correctness, not a discovery about
+real fraud. The hyper-parameters are those selected on the main dataset and were not
+tuned again, which penalises the smallest feature sets. And the terminal risk is known
+with a seven-day delay, which bounds the detection of a terminal compromised for 28 days.
+
+### 6. Weighing each alert by the amount at stake lowers the cost of fraud
+
+A probability must be turned into a decision. The decision rules below are compared
+under an explicit cost model: every alert costs a fixed handling cost, and a fraud that
+raises no alert costs the amount of the transaction. Savings are the share of the
+fraudulent amounts that is avoided, net of the cost of the alerts. The probabilities are
+those of the retained, calibrated model on the validation periods of the main dataset.
+
+<!-- BEGIN:costs -->
+| Decision rule | Savings, alert cost 5 | Savings, alert cost 10 | Savings, alert cost 25 | Alerts per 100,000 (alert cost 10) | Precision | Recall |
+|---|---|---|---|---|---|---|
+| Probability threshold of 0.5 (first version) | 66.0% | 63.1% | 54.6% | 116 | 0.874 | 0.716 |
+| Cost-optimal probability threshold | 66.0% | 62.3% | 53.0% | 140 | 0.749 | 0.739 |
+| Expected-cost rule (probability x amount > alert cost) | 71.0% | 66.3% | 60.6% | 134 | 0.435 | 0.412 |
+| Oracle (upper bound) | 97.6% | 95.7% | 90.4% | | | |
+<!-- END:costs -->
+
+The expected-cost rule alerts when the probability of fraud multiplied by the amount
+exceeds the cost of an alert. It follows from the cost model, has no fitted parameter
+and gives the highest savings for the three alert costs considered, in every validation
+period for alert costs of 10 and 25 and in three periods out of four for an alert cost
+of 5. It does so by concentrating alerts on large amounts: it flags fewer frauds than a
+threshold of 0.5 but the more expensive ones. A single probability threshold tuned for
+cost does not improve on 0.5; its value varies widely from one period to another. The
+expected-cost rule, with an alert cost of 10 that can be changed in the configuration,
+is the rule retained for the prediction service (decision D3).
+
+Three reservations apply. The alert costs are assumptions, not measured costs of a
+card issuer. Half of the frauds of the validation periods are worth less than 19, and
+the rule deliberately ignores most of them, whereas a small fraud may in practice
+precede larger ones on the same card. And the gap to the oracle remains large: the
+remaining cost comes from frauds to which the model assigns a low probability.
+
+### 7. Each prediction can be decomposed exactly into feature contributions
+
+Each prediction of the retained model is attributed to its input features by Shapley
+values, computed exactly for tree ensembles. For every transaction, the contributions
+and a base value add up to the log-odds predicted by the model (largest deviation
+observed: of the order of 10⁻⁵). The table gives the ten features with the largest mean
+absolute contribution over the validation periods.
+
+<!-- BEGIN:attributions -->
+| Rank | Feature | Mean absolute contribution (log-odds) | Rank in each period |
+|---|---|---|---|
+| 1 | `V4` | 1.435 | 1, 2, 2, 1 |
+| 2 | `V14` | 1.377 | 2, 1, 1, 2 |
+| 3 | `V12` | 0.898 | 3, 3, 3, 3 |
+| 4 | `V10` | 0.515 | 4, 4, 5, 4 |
+| 5 | `V8` | 0.426 | 8, 8, 4, 5 |
+| 6 | `Amount` | 0.364 | 7, 5, 7, 6 |
+| 7 | `V21` | 0.345 | 6, 6, 8, 20 |
+| 8 | `V11` | 0.303 | 10, 10, 11, 7 |
+| 9 | `V20` | 0.284 | 9, 9, 9, 23 |
+| 10 | `V26` | 0.265 | 5, 16, 17, 16 |
+<!-- END:attributions -->
+
+The four leading features keep their rank to within one position in every period, and
+the ranking is nearly identical from one seed to another. Beyond them the ranking is
+only moderately stable between periods: an explanation that rests on the lower-ranked
+features should be read with caution.
+
+Two reservations apply. Apart from the amount and the time of day, the features are
+anonymised principal components, so an explanation names a component and not a
+property of the transaction that an analyst could act on. And a contribution describes
+how the model uses a feature; it is not evidence of what causes fraud.
+
 ### Not yet available
 
 The performance of the retained model on the hold-out set is deliberately not reported
@@ -113,6 +214,12 @@ dataset (Worldline and the Machine Learning Group of ULB): 284,807 transactions 
 over two days in September 2013, 492 of them frauds. The features are 28 principal
 components (`V1`–`V28`), the amount and the time elapsed since the first transaction.
 The file is not distributed with this repository; its checksum is verified before use.
+
+**Simulated data.** A second table is generated by `fraud_detection.simulation`, an
+independent implementation of the generative process specified in the *Fraud Detection
+Handbook*: 5,000 customers and 10,000 terminals over 183 days, with three fraud
+scenarios (amount above a threshold, compromised terminal, compromised customer). It is
+used only for the study of behavioural features.
 
 **Preparation.** Rows that are exact copies of an earlier row are removed (1,081 rows,
 19 frauds). The elapsed time, which has no defined value outside the collection period,
@@ -129,8 +236,9 @@ false-positive rate of at most 0.1% is reported as a secondary metric. Confidenc
 intervals are obtained by bootstrap.
 
 **Safeguards.** Unit tests check that no partition shares a row with another, that no
-model is validated on transactions older than its training data, and that re-sampling is
-never applied to validation data. They run in continuous integration on every push.
+model is validated on transactions older than its training data, that re-sampling is
+never applied to validation data, and that no behavioural feature depends on later
+transactions or on labels younger than the label delay. They run in continuous integration on every push.
 
 ## Reproducing the results
 
@@ -151,6 +259,9 @@ pytest -q                               # unit tests and leakage guards
 python scripts/prepare_data.py          # checksum, duplicates, partitions
 python scripts/run_baseline.py          # result 1, about 10 minutes on 2 cores
 python scripts/run_model_selection.py   # results 2 to 4, about 35 minutes on 2 cores
+python scripts/run_behavioural_features.py   # result 5, about 25 minutes on 2 cores
+python scripts/run_cost_analysis.py          # result 6, about 2 minutes on 2 cores
+python scripts/run_explanations.py           # result 7, about 2 minutes on 2 cores
 python scripts/update_readme.py         # regenerate the tables of this file
 ```
 
@@ -172,6 +283,10 @@ src/fraud_detection/       installable package
     search.py              hyper-parameter search spaces
     calibration.py         probability calibration
     validation.py          cross-validated evaluation
+    simulation.py          simulator of transactions with identifiers
+    behavioural.py         customer and terminal aggregates
+    costs.py               cost model and decision rules
+    explain.py             attribution of predictions to features
     experiment.py          provenance of results
 scripts/                   experiment entry points
 tests/                     unit tests
@@ -187,9 +302,9 @@ notebooks/                 exploratory analysis of the first version
 |---|---|---|
 | 1 | Reference measurements, temporal protocol, tests | Done |
 | 2 | Model selection, imbalance treatments, calibration | Done |
-| 3 | Behavioural features on a dataset with card and terminal identifiers | Planned |
-| 4 | Cost-based decision threshold | Planned |
-| 5 | Explanation of individual predictions | Planned |
+| 3 | Behavioural features on a dataset with card and terminal identifiers | Done |
+| 4 | Cost-based decision rule | Done |
+| 5 | Explanation of individual predictions | Done |
 | 6 | Deployable prototype: single pipeline, validated API, container | Planned |
 | 7 | Final evaluation on the hold-out set, model card, technical report | Planned |
 
@@ -202,6 +317,8 @@ notebooks/                 exploratory analysis of the first version
 - Differences between models below about 0.01 of AUPRC cannot be resolved with the
   number of frauds available.
 - The hyper-parameter search is limited to 30 random configurations per boosted model.
+- Behavioural features are evaluated on synthetic data only; their benefit on real
+  transactions is not measured here.
 
 ## History
 
@@ -216,12 +333,19 @@ the first version remains available under the tag `v0-legacy`.
 - A. Dal Pozzolo, O. Caelen, R. A. Johnson and G. Bontempi. *Calibrating Probability
   with Undersampling for Unbalanced Classification.* IEEE Symposium Series on
   Computational Intelligence, 2015. (Source of the dataset.)
+- Y.-A. Le Borgne, W. Siblini, B. Lebichot and G. Bontempi. *Reproducible Machine
+  Learning for Credit Card Fraud Detection – Practical Handbook.* Université Libre de
+  Bruxelles, 2022. (Specification of the transaction simulator.)
 - J. Davis and M. Goadrich. *The Relationship Between Precision-Recall and ROC Curves.*
   International Conference on Machine Learning, 2006.
 - N. V. Chawla, K. W. Bowyer, L. O. Hall and W. P. Kegelmeyer. *SMOTE: Synthetic
   Minority Over-sampling Technique.* Journal of Artificial Intelligence Research, 2002.
 - J. Platt. *Probabilistic Outputs for Support Vector Machines and Comparisons to
   Regularized Likelihood Methods.* Advances in Large Margin Classifiers, 1999.
+- S. M. Lundberg and S.-I. Lee. *A Unified Approach to Interpreting Model Predictions.*
+  Advances in Neural Information Processing Systems, 2017.
+- S. M. Lundberg et al. *From Local Explanations to Global Understanding with
+  Explainable AI for Trees.* Nature Machine Intelligence, 2020.
 - T. Chen and C. Guestrin. *XGBoost: A Scalable Tree Boosting System.* ACM SIGKDD, 2016.
 - G. Ke et al. *LightGBM: A Highly Efficient Gradient Boosting Decision Tree.* Advances
   in Neural Information Processing Systems, 2017.

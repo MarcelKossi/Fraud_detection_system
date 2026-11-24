@@ -54,4 +54,39 @@ selected_model:
     reg_lambda: 8.182111518618424
     subsample: 0.6838915663596266
 
+simulation:
+  # Baseline configuration of the Fraud Detection Handbook simulator.
+  n_customers: 5000
+  n_terminals: 10000
+  n_days: 183
+  start_date: "2018-04-01"
+  radius: 5.0
+  seed: 0
+
+behavioural:
+  # Lengths of the aggregation windows, in days.
+  windows_days: [1, 7, 30]
+  # Delay after which the fraud label of a transaction is known, in days.
+  delay_days: 7
+  test_fraction: 0.2
+  n_cv_folds: 4
+  seeds: [0, 1, 2]
+  # Feature sets compared in the ablation; each is a list of feature groups.
+  feature_sets:
+    raw: [raw]
+    raw_calendar: [raw, calendar]
+    raw_customer: [raw, customer]
+    raw_terminal: [raw, terminal]
+    all: [raw, calendar, customer, terminal]
+
+cost:
+  # Decision rule of the prediction service (decision D3): alert when
+  # probability x amount exceeds the alert cost.
+  decision_rule: expected_cost
+  # Handling cost of one alert, in the currency of the amounts.
+  alert_cost: 10.0
+  # Alternative values used for the sensitivity analysis.
+  sensitivity_alert_costs: [5.0, 10.0, 25.0]
+  amount_column: Amount
+
 results_dir: results
