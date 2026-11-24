@@ -157,7 +157,9 @@ and gives the highest savings for the three alert costs considered, in every val
 period for alert costs of 10 and 25 and in three periods out of four for an alert cost
 of 5. It does so by concentrating alerts on large amounts: it flags fewer frauds than a
 threshold of 0.5 but the more expensive ones. A single probability threshold tuned for
-cost does not improve on 0.5; its value varies widely from one period to another.
+cost does not improve on 0.5; its value varies widely from one period to another. The
+expected-cost rule, with an alert cost of 10 that can be changed in the configuration,
+is the rule retained for the prediction service (decision D3).
 
 Three reservations apply. The alert costs are assumptions, not measured costs of a
 card issuer. Half of the frauds of the validation periods are worth less than 19, and

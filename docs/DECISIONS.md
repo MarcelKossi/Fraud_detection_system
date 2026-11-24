@@ -109,3 +109,45 @@ withheld from the classifier.
 sigmoid and AUPRC is unchanged (0.772). Isotonic regression raises the Brier score to
 0.000554 and lowers AUPRC to 0.726. Calibrated probabilities are required by the
 cost-based threshold of step 4.
+
+---
+
+## D3 — Cost model and decision rule (2026-11-24)
+
+Evidence: `results/cost/`, calibrated out-of-fold probabilities of the retained model on
+the four validation periods of the development set, five seeds. The hold-out set was not
+used.
+
+### Cost model
+
+**Choice.** Every alert costs a fixed handling cost, whether justified or not; a fraud
+that raises no alert costs the amount of the transaction. The reference alert cost is
+10, with 5 and 25 as sensitivity values.
+
+**Status of these values.** They are assumptions made for the purpose of the
+demonstration, not costs measured at a card issuer. The alert cost is a parameter of the
+configuration.
+
+### Decision rule
+
+**Options.** (a) Probability threshold of 0.5, as in the first version. (b) Single
+probability threshold minimising the cost. (c) Expected-cost rule: alert when
+probability x amount exceeds the alert cost.
+
+**Choice.** (c).
+
+**Evidence.** Savings for alert costs of 5, 10 and 25: (a) 66.0%, 63.1%, 54.6%;
+(b) 66.0%, 62.3%, 53.0%; (c) 71.0%, 66.3%, 60.6%. Rule (c) is ahead in every validation
+period for alert costs of 10 and 25 and in three of four for 5. Rule (b) cannot be
+estimated reliably: its threshold ranges from 0.05 to 0.82 across periods for an alert
+cost of 10. Rule (c) follows directly from the cost model and has no fitted parameter.
+
+**Accepted consequence.** Rule (c) flags 41% of the frauds against 72% for rule (a), at
+a comparable number of alerts: it gives up frauds of small amount, which are numerous
+in this dataset (median fraudulent amount 19), in order to catch the expensive ones.
+The objective retained is the reduction of financial loss, not the number of frauds
+detected.
+
+**Limits.** Each transaction is valued in isolation; a small fraud that precedes larger
+ones on the same card is not accounted for. The rule relies on the calibration of the
+probabilities.

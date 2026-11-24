@@ -80,7 +80,10 @@ behavioural:
     all: [raw, calendar, customer, terminal]
 
 cost:
-  # Handling cost of one alert, in the currency of the amounts (decision D3).
+  # Decision rule of the prediction service (decision D3): alert when
+  # probability x amount exceeds the alert cost.
+  decision_rule: expected_cost
+  # Handling cost of one alert, in the currency of the amounts.
   alert_cost: 10.0
   # Alternative values used for the sensitivity analysis.
   sensitivity_alert_costs: [5.0, 10.0, 25.0]
