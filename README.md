@@ -318,8 +318,11 @@ docker run -p 8000:8000 fraud-detection-api
 The image contains the API and the model, without the experiment dependencies. It is
 built and checked against the stored examples in continuous integration.
 
-**Scope.** This is a prototype. It has no authentication, no rate limiting, no request
-logging and no monitoring of input drift, all of which a production service requires.
+**Scope.** This is a prototype. The API is deliberately left open, without
+authentication, so that it can be tried freely for testing and demonstration; it must
+not be exposed as such to real transaction data. It also has no rate limiting, no
+request logging and no monitoring of input drift, all of which a production service
+requires.
 
 ## Reproducing the results
 

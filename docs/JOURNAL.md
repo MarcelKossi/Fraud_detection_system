@@ -507,8 +507,8 @@ any other policy.
 
 ### Limits
 
-- The service has no authentication, rate limiting, request logging nor monitoring of
-  input drift.
+- The API is deliberately left open, without authentication, for testing and
+  demonstration. It has no rate limiting, request logging nor monitoring of input drift.
 - The time field is the elapsed time of the dataset; only its value modulo 24 hours is
   used, and the clock time of its origin is not documented by the dataset.
 - The performance of the stored model is known by cross-validation only until step 7.
