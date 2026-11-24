@@ -1,0 +1,57 @@
+# Single source of truth for data handling, splitting and evaluation.
+# Every experiment script reads this file; no value below is hard-coded elsewhere.
+
+seed: 42
+
+data:
+  raw_path: data/raw/creditcard.csv
+  # SHA-256 of the original creditcard.csv; the loader refuses any other file.
+  sha256: 76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89
+  target: Class
+  time_column: Time
+
+split:
+  # The last `test_fraction` of the time-ordered, de-duplicated transactions is the hold-out set.
+  test_fraction: 0.2
+  # Expanding-window cross-validation on the remaining development set.
+  n_cv_folds: 4
+
+evaluation:
+  threshold: 0.5
+  max_fpr: 0.001
+  bootstrap_resamples: 1000
+  confidence_level: 0.95
+
+baseline_model:
+  n_estimators: 100
+
+model_selection:
+  feature_set: hour_of_day
+  # Number of random-search configurations per model family.
+  n_trials:
+    logistic_regression: 20
+    lightgbm: 30
+    xgboost: 30
+  # Seeds used to estimate the run-to-run variability of the retained configurations.
+  seeds: [0, 1, 2, 3, 4]
+  # Target ratio of frauds to legitimate transactions after re-sampling a training fold.
+  resampling_ratio: 0.1
+  # Share of each training window, taken at its end, reserved to fit probability calibrators.
+  calibration_fraction: 0.2
+
+selected_model:
+  # Retained by decision D2 (docs/DECISIONS.md); values copied from
+  # results/model_selection/search_xgboost.json.
+  family: xgboost
+  imbalance: none
+  calibration: sigmoid
+  params:
+    colsample_bytree: 0.6210276357557503
+    learning_rate: 0.05967212083511124
+    max_depth: 4
+    min_child_weight: 1.9551434125044704
+    n_estimators: 500
+    reg_lambda: 8.182111518618424
+    subsample: 0.6838915663596266
+
+results_dir: results

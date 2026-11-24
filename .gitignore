@@ -33,3 +33,11 @@ data/raw/*.csv
 
 # Temporary files
 *tempCodeRunnerFile*
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+
+# Local data (never committed)
+data/raw/*
+data/processed/

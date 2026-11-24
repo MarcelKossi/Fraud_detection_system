@@ -1,0 +1,111 @@
+# Decision log
+
+Each entry states the question, the options considered, the evidence, and the choice.
+
+---
+
+## D1 — Data, evaluation protocol and primary metric (2026-11-24)
+
+### Datasets
+
+**Choice.** The Credit Card Fraud Detection dataset (ULB / Worldline) remains the main
+dataset. A second, simulated dataset with card and terminal identifiers (generator of
+the *Fraud Detection Handbook*) is added for behavioural feature engineering.
+
+**Reason.** The main dataset is anonymised by PCA and carries no card or merchant
+identifier; aggregates per card or per terminal cannot be computed on it.
+
+### Duplicates
+
+**Choice.** Rows that are exact copies of an earlier row are removed before any split.
+
+**Evidence.** 1,081 such rows exist (19 frauds). Under the random split of the first
+version, 344 test rows, including 8 frauds, also appear in the training set.
+
+### Split
+
+**Options.** (a) Random stratified split, as in the first version. (b) Fixed temporal
+60/20/20 split. (c) Temporal hold-out of the last 20%, with expanding-window
+cross-validation on the first 80%.
+
+**Choice.** (c). The random split is kept only to replicate the first version.
+
+**Evidence.** A fraud detector is applied to transactions that follow its training
+data; a random split does not reproduce that situation. Option (b) leaves 57 frauds in
+the validation set, too few to select a model or a threshold reliably. Option (c) uses
+the 399 frauds of the development period across four validation folds (69, 47, 89 and
+52 frauds) and keeps a hold-out set of 74 frauds.
+
+**Known limitation.** The dataset spans two days. With 74 frauds in the hold-out set,
+confidence intervals remain wide whatever the protocol.
+
+### Time feature
+
+**Choice.** The elapsed time since the first transaction is replaced by a cyclic
+encoding of the time of day.
+
+**Evidence.** The elapsed time has no defined value for a transaction recorded after
+the collection period, hence cannot be used by a deployed model. The substitution
+leaves cross-validated AUPRC unchanged (0.751 against 0.752).
+
+### Primary metric
+
+**Choice.** Area under the precision-recall curve (AUPRC). Secondary metrics: recall at
+a false-positive rate of at most 0.1%, and a cost-based measure defined in a later
+decision. Precision, recall and F1 at a fixed threshold are reported for continuity
+with the first version only.
+
+**Reason.** With 0.17% of positive examples, threshold-dependent metrics at an
+arbitrary threshold and metrics dominated by true negatives are uninformative; AUPRC is
+threshold-free and is the measure recommended by the authors of the dataset.
+
+---
+
+## D2 — Model, imbalance treatment and calibration (2026-11-24)
+
+All evidence comes from expanding-window cross-validation on the development period,
+repeated over five seeds (`results/model_selection/`). The hold-out set was not used.
+
+### Model family
+
+**Options.** Random forest (first version), logistic regression, LightGBM, XGBoost.
+
+**Choice.** XGBoost, with the best configuration of the random search
+(`configs/config.yaml`, section `selected_model`).
+
+**Evidence.** Mean AUPRC: random forest 0.757, logistic regression 0.749, LightGBM
+0.778, XGBoost 0.780. Both boosted models exceed the random forest on every validation
+period and for every seed. The difference between XGBoost and LightGBM (0.002) is within
+seed-to-seed variability: accuracy does not separate them. XGBoost is preferred for its
+lower sensitivity to settings: over 30 searched configurations its AUPRC stays between
+0.686 and 0.783, against 0.588 to 0.781 for LightGBM, and it remains stable under class
+weighting (0.775) where LightGBM falls to 0.616.
+
+**What this choice does not claim.** XGBoost is not shown to be more accurate than
+LightGBM. On the secondary metric, recall at a false-positive rate of at most 0.1%, it
+is slightly below the random forest and LightGBM (0.795 against 0.803).
+
+### Imbalance treatment
+
+**Options.** None, class weighting, random under-sampling, SMOTE; the last two applied
+to training folds only.
+
+**Choice.** None.
+
+**Evidence.** For XGBoost: none 0.780, SMOTE 0.780, class weighting 0.775,
+under-sampling 0.747. No treatment exceeds the untreated model by more than twice the
+standard deviation over seeds, the criterion set for adopting one. The simplest option
+is retained; it also leaves the class proportions, and therefore the predicted
+probabilities, undistorted.
+
+### Probability calibration
+
+**Options.** None, sigmoid (Platt scaling), isotonic regression.
+
+**Choice.** Sigmoid, fitted on the most recent part of the training data, which is
+withheld from the classifier.
+
+**Evidence.** For XGBoost, the Brier score falls from 0.000522 to 0.000483 with the
+sigmoid and AUPRC is unchanged (0.772). Isotonic regression raises the Brier score to
+0.000554 and lowers AUPRC to 0.726. Calibrated probabilities are required by the
+cost-based threshold of step 4.
