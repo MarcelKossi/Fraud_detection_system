@@ -5,14 +5,15 @@ Supervised detection of fraudulent card transactions on a highly imbalanced data
 transactions, with the aim of a deployable prototype: a trained and calibrated model,
 a validated REST API and an interactive dashboard.
 
-> **Status — version 2 in progress.** Steps 1 to 6 of the roadmap below are complete.
-> The final evaluation on the hold-out set (step 7) has not been run: the performance of
-> the model in service is so far known by cross-validation only. The first version is
-> preserved under the tag `v0-legacy`.
+> **Status — version 2.** The seven steps of the roadmap are complete, including the
+> single evaluation on the hold-out set ([result 8](#8-final-evaluation-on-the-hold-out-set)).
+> A summary is given in the [technical report](docs/REPORT.md) and the model is
+> described in its [model card](docs/MODEL_CARD.md). The first version is preserved
+> under the tag `v0-legacy`.
 
 ## Contents
 
-1. [Results so far](#results-so-far)
+1. [Results](#results)
 2. [Method](#method)
 3. [Prediction service](#prediction-service)
 4. [Reproducing the results](#reproducing-the-results)
@@ -22,7 +23,7 @@ a validated REST API and an interactive dashboard.
 8. [History](#history)
 9. [References](#references)
 
-## Results so far
+## Results
 
 All tables below are generated from the files in `results/` by
 `scripts/update_readme.py`. The reasoning behind each choice is recorded in
@@ -199,12 +200,64 @@ anonymised principal components, so an explanation names a component and not a
 property of the transaction that an analyst could act on. And a contribution describes
 how the model uses a feature; it is not evidence of what causes fraud.
 
-### Not yet available
+### 8. Final evaluation on the hold-out set
 
-The performance of the retained model on the hold-out set is deliberately not reported
-at this stage. It is measured once, at the end, so that no modelling choice can be
-influenced by it. The cross-validated scores above are those of the best configuration
-among those searched and are therefore slightly optimistic.
+The stored model was evaluated once on the last 20% of the transactions, which no
+modelling choice had used. It is compared, on the same transactions, with the model and
+the decision rule of the first version (random forest with default settings, threshold
+of 0.5), trained on the same development period. Intervals are 95% bootstrap intervals;
+those of the differences are paired.
+
+<!-- BEGIN:final -->
+| System | AUPRC | Recall at FPR ≤ 0.1% | Savings, alert cost 10 | Alerts | Frauds flagged |
+|---|---|---|---|---|---|
+| First version: random forest, threshold 0.5 | 0.784 [0.689, 0.869] | 0.797 [0.689, 0.883] | 42.4% [13.3%, 71.2%] | 53 | 68.9% |
+| Retained model, threshold 0.5 | 0.803 [0.709, 0.883] | 0.797 [0.696, 0.887] | 57.8% [29.2%, 83.7%] | 57 | 73.0% |
+| Retained model, expected-cost rule | 0.803 [0.709, 0.883] | 0.797 [0.696, 0.887] | 58.2% [28.8%, 82.5%] | 77 | 29.7% |
+| Difference, last row minus first | +0.019 [-0.004, +0.046] | +0.000 [-0.038, +0.044] | +15.9% [-3.8%, +41.7%] | | |
+| Share of bootstrap resamples in which the last row is better | 94% | 38% | 90% | | |
+<!-- END:final -->
+
+Differences in savings are in percentage points. Savings for the three alert costs
+considered:
+
+<!-- BEGIN:final_sensitivity -->
+| System | Savings, alert cost 5 | Savings, alert cost 10 | Savings, alert cost 25 |
+|---|---|---|---|
+| First version: random forest, threshold 0.5 | 45.8% | 42.4% | 32.1% |
+| Retained model, threshold 0.5 | 61.5% | 57.8% | 46.8% |
+| Retained model, expected-cost rule | 60.5% | 58.2% | 52.5% |
+| Oracle (upper bound) | 97.1% | 95.0% | 89.7% |
+<!-- END:final_sensitivity -->
+
+What these figures support, and what they do not:
+
+- **Ranking.** The retained model has the higher AUPRC, by a margin close to the one
+  measured in cross-validation, and it is ahead in most bootstrap resamples. The
+  interval of the difference nevertheless includes zero: with 74 frauds, the
+  improvement is likely but not established at the 95% level. The recall at a low
+  false-positive rate is unchanged.
+- **Cost.** Savings are markedly higher than those of the first version for the three
+  alert costs, but the interval of the difference is wide and includes zero: the
+  fraudulent amount of the hold-out set is concentrated in a few transactions.
+- **Decision rule.** On the hold-out set, the gain in savings comes from the model, not
+  from the rule: with a threshold of 0.5 the retained model saves about as much as with
+  the expected-cost rule for alert costs of 5 and 10, and less only for 25. The
+  advantage of the expected-cost rule observed in cross-validation (result 6) is
+  therefore not confirmed. The rule is kept as decided before this evaluation, since
+  changing it now would amount to tuning on the hold-out set.
+- **Calibration.** The Brier score and the logarithmic loss of the stored model on the
+  hold-out set are given in `results/final/holdout_evaluation.json`.
+
+On the simulated transactions, the hold-out period confirms the cross-validated effect
+of behavioural features (result 5):
+
+<!-- BEGIN:final_simulated -->
+| Feature set | Features | AUPRC, mean over seeds (std) | Recall at low FPR |
+|---|---|---|---|
+| Amount and time of day | 3 | 0.166 (0.001) | 0.150 |
+| All behavioural groups | 20 | 0.773 (0.001) | 0.724 |
+<!-- END:final_simulated -->
 
 ## Method
 
@@ -244,8 +297,8 @@ transactions or on labels younger than the label delay. They run in continuous i
 The model in service is stored in `models/fraud_model/`: the classifier in the native
 JSON format of XGBoost and a metadata file holding the calibration coefficients, the
 decision rule and the provenance of the model. No pickled object is used. The model is
-trained on the development set only, so that it can be evaluated once on the hold-out
-set in step 7.
+trained on the development set only, and was evaluated once on the hold-out set
+(result 8).
 
 **API.**
 
@@ -347,6 +400,14 @@ python scripts/run_behavioural_features.py   # result 5, about 25 minutes on 2 c
 python scripts/run_cost_analysis.py          # result 6, about 2 minutes on 2 cores
 python scripts/run_explanations.py           # result 7, about 2 minutes on 2 cores
 python scripts/train_final_model.py          # model in service, a few seconds
+```
+
+The final evaluation is deliberately protected against repetition:
+`scripts/evaluate_holdout.py` refuses to run while `results/final/holdout_evaluation.json`
+exists. To reproduce it, delete that file first.
+
+```bash
+python scripts/evaluate_holdout.py           # result 8, about 10 minutes on 2 cores
 python scripts/update_readme.py         # regenerate the tables of this file
 ```
 
@@ -377,7 +438,7 @@ src/fraud_detection/       installable package
 scripts/                   experiment entry points
 tests/                     unit tests
 results/                   metrics (JSON) and generated summaries
-docs/                      journal and decision log
+docs/                      journal, decision log, model card, technical report
 models/fraud_model/        model in service, its metadata and example transactions
 api/                       REST API
 dashboard/                 Streamlit dashboard
@@ -395,7 +456,7 @@ notebooks/                 exploratory analysis of the first version
 | 4 | Cost-based decision rule | Done |
 | 5 | Explanation of individual predictions | Done |
 | 6 | Deployable prototype: serialised model, validated API, dashboard, container | Done |
-| 7 | Final evaluation on the hold-out set, model card, technical report | Planned |
+| 7 | Final evaluation on the hold-out set, model card, technical report | Done |
 
 ## Limitations
 

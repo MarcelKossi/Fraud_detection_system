@@ -517,3 +517,94 @@ any other policy.
 
 Step 7: single evaluation of the stored model on the hold-out set, model card,
 technical report.
+
+---
+
+## 2026-11-25 — Step 7: final evaluation on the hold-out sets
+
+### Objective
+
+Measure once, on data that no choice has used, the model stored in step 6, and compare
+it with the first version of the project on the same transactions.
+
+### What was run
+
+```
+python scripts/evaluate_holdout.py
+python scripts/update_readme.py
+```
+
+The evaluation script was first exercised on development data only, with a substitute
+split, to rule out programming errors before the hold-out set was read. It was then run
+once. It refuses to run again while its result file exists. Results are in
+`results/final/holdout_evaluation.json`.
+
+### Protocol
+
+Main dataset: last 20% of the transactions (56,745 transactions, 74 frauds, fraudulent
+amount 7,728). Three systems are compared on these transactions: the first version
+(random forest with default settings, raw features, threshold 0.5, trained on the whole
+development period); the stored model with a threshold of 0.5; the stored model with
+the expected-cost rule of D3. Intervals are 95% percentile bootstrap intervals over
+1,000 resamples; differences are paired.
+
+Simulated dataset: retained configuration trained on the development period minus the
+seven-day label delay, evaluated on the hold-out period (358,837 transactions, 3,242
+frauds), three seeds.
+
+### Observations
+
+| System | AUPRC | Recall at FPR ≤ 0.1% | Savings, alert cost 10 | Alerts | Frauds flagged |
+|---|---|---|---|---|---|
+| First version | 0.784 [0.689, 0.869] | 0.797 | 42.4% [13.3%, 71.2%] | 53 | 68.9% |
+| Stored model, threshold 0.5 | 0.803 [0.709, 0.883] | 0.797 | 57.8% [29.2%, 83.7%] | 57 | 73.0% |
+| Stored model, expected-cost rule | 0.803 [0.709, 0.883] | 0.797 | 58.2% [28.8%, 82.5%] | 77 | 29.7% |
+
+- Difference between the stored model with the expected-cost rule and the first
+  version: AUPRC +0.019 [-0.004, +0.046], positive in 94% of the resamples; savings
+  +15.9 points [-3.8, +41.7], positive in 90% of the resamples; recall at a low
+  false-positive rate 0.000 [-0.038, +0.044].
+- Savings by alert cost (5, 10, 25): first version 45.8%, 42.4%, 32.1%; stored model
+  with threshold 0.5: 61.5%, 57.8%, 46.8%; with the expected-cost rule: 60.5%, 58.2%,
+  52.5%; oracle 97.1%, 95.0%, 89.7%.
+- Calibration of the stored model: Brier score 0.000369, logarithmic loss 0.00239.
+- Simulated data: AUPRC 0.166 with raw features and 0.773 with all behavioural
+  features (cross-validation: 0.164 and 0.717).
+
+### Interpretation
+
+- The AUPRC gain (+0.019) equals the one measured in cross-validation (about +0.02), and
+  the cross-validated estimate of the retained model (0.780) was not optimistic for
+  this period (0.803). The gain is nevertheless not established at the 95% level: the
+  interval of the difference includes zero.
+- Savings are higher by 15 to 20 points for the three alert costs, with intervals that
+  include zero. The fraudulent amount of the hold-out set is small (7,728) and
+  concentrated, which makes any cost comparison on it imprecise.
+- The advantage of the expected-cost rule over the threshold of 0.5, of 3 to 6 points
+  in cross-validation, is not confirmed: -1.0, +0.4 and +5.7 points for alert costs of
+  5, 10 and 25. On this set the gain over the first version comes from the model.
+- The expected-cost rule flags 30% of the frauds, against 73% for the threshold, for a
+  similar saving at an alert cost of 10: its benefit rests entirely on the amounts.
+- On simulated data, the effect of behavioural features is confirmed, and is larger
+  than in cross-validation with all features, consistent with the larger training set.
+
+### Decision
+
+D3 is left unchanged. The hold-out set does not confirm the advantage of the
+expected-cost rule, but it does not contradict it at the reference alert cost either,
+and revising a choice in the light of the hold-out set would turn it into a validation
+set. The discrepancy is reported as such in the README, the report and the model card.
+
+### What this project establishes
+
+- Established: the evaluation of the first version was biased upwards by an identified
+  mechanism; the present pipeline is reproducible and guarded against leakage.
+- Supported, not established: the retained model improves ranking and cost.
+- Not confirmed: the superiority of the expected-cost rule over a fixed threshold.
+- Negative: imbalance treatments, calendar features, time-of-day encoding.
+
+### Further work
+
+A dataset spanning several months with identifiers is the main requirement: it would
+provide the statistical power that is lacking here and allow behavioural features and
+drift to be studied on real transactions.

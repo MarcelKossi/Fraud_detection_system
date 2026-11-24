@@ -1,6 +1,7 @@
-"""Regenerate the result tables of the README from the files in ``results/``.
+"""Regenerate the result tables of the documents from the files in ``results/``.
 
-Every table of the README lies between two markers, ``<!-- BEGIN:<name> -->`` and
+Every generated table of the README, the model card and the report lies between two
+markers, ``<!-- BEGIN:<name> -->`` and
 ``<!-- END:<name> -->``. This script rewrites what lies between them, so that no figure
 of the README is typed by hand.
 
@@ -170,6 +171,83 @@ def attribution_table(results: Path) -> str:
     return "\n".join(rows)
 
 
+FINAL_LABELS = {
+    "first_version": "First version: random forest, threshold 0.5",
+    "retained_model_threshold": "Retained model, threshold 0.5",
+    "retained_model_expected_cost": "Retained model, expected-cost rule",
+}
+
+
+def _ci(entry: dict, fmt: str = ".3f", signed: bool = False) -> str:
+    sign = "+" if signed else ""
+    low, high = entry["ci"]
+    return f"{entry['value']:{sign}{fmt}} [{low:{sign}{fmt}}, {high:{sign}{fmt}}]"
+
+
+def final_table(results: Path) -> str:
+    main = _load(results, "final/holdout_evaluation.json")["main_dataset"]
+    comparison = main["comparison_with_first_version"]
+    measured = {
+        "first_version": comparison["retained_model_expected_cost"]["old"],
+        "retained_model_threshold": comparison["retained_model_threshold"]["new"],
+        "retained_model_expected_cost": comparison["retained_model_expected_cost"]["new"],
+    }
+    max_fpr = main["systems"]["first_version"]["ranking"]["recall_at_fpr"]["max_fpr"]
+    rows = [
+        f"| System | AUPRC | Recall at FPR ≤ {max_fpr:.1%} "
+        f"| Savings, alert cost {main['alert_cost']:g} | Alerts | Frauds flagged |",
+        "|---|---|---|---|---|---|",
+    ]
+    for name, label in FINAL_LABELS.items():
+        decision = main["systems"][name]["decision"]
+        rows.append(
+            f"| {label} | {_ci(measured[name]['auprc'])} "
+            f"| {_ci(measured[name]['recall_at_fpr'])} | {_ci(measured[name]['savings'], '.1%')} "
+            f"| {decision['n_alerts']} | {decision['recall']:.1%} |"
+        )
+    difference = comparison["retained_model_expected_cost"]["difference"]
+    share = comparison["retained_model_expected_cost"]["share_of_resamples_where_new_is_better"]
+    rows.append(
+        f"| Difference, last row minus first | {_ci(difference['auprc'], signed=True)} "
+        f"| {_ci(difference['recall_at_fpr'], signed=True)} "
+        f"| {_ci(difference['savings'], '.1%', signed=True)} | | |"
+    )
+    rows.append(
+        f"| Share of bootstrap resamples in which the last row is better "
+        f"| {share['auprc']:.0%} | {share['recall_at_fpr']:.0%} | {share['savings']:.0%} | | |"
+    )
+    return "\n".join(rows)
+
+
+def final_sensitivity_table(results: Path) -> str:
+    main = _load(results, "final/holdout_evaluation.json")["main_dataset"]
+    costs = main["savings_by_alert_cost"]
+    rows = [
+        "| System | " + " | ".join(f"Savings, alert cost {cost}" for cost in costs) + " |",
+        "|---|" + "---|" * len(costs),
+    ]
+    for name, label in {**FINAL_LABELS, "oracle": "Oracle (upper bound)"}.items():
+        rows.append(
+            f"| {label} | " + " | ".join(f"{costs[cost][name]:.1%}" for cost in costs) + " |"
+        )
+    return "\n".join(rows)
+
+
+def final_simulated_table(results: Path) -> str:
+    simulated = _load(results, "final/holdout_evaluation.json")["simulated_dataset"]
+    labels = {"raw": "Amount and time of day", "all": "All behavioural groups"}
+    rows = [
+        "| Feature set | Features | AUPRC, mean over seeds (std) | Recall at low FPR |",
+        "|---|---|---|---|",
+    ]
+    for name, summary in simulated["feature_sets"].items():
+        rows.append(
+            f"| {labels[name]} | {summary['n_features']} | {summary['auprc_mean']:.3f} "
+            f"({summary['auprc_seed_std']:.3f}) | {summary['recall_at_fpr_mean']:.3f} |"
+        )
+    return "\n".join(rows)
+
+
 def replace_block(text: str, name: str, content: str) -> str:
     pattern = re.compile(rf"(<!-- BEGIN:{name} -->\n).*?(<!-- END:{name} -->)", flags=re.DOTALL)
     if not pattern.search(text):
@@ -180,27 +258,39 @@ def replace_block(text: str, name: str, content: str) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--config", default="configs/config.yaml")
-    parser.add_argument("--readme", default="README.md")
+    parser.add_argument(
+        "--documents",
+        nargs="+",
+        default=["README.md", "docs/MODEL_CARD.md", "docs/REPORT.md"],
+        help="Files whose marked blocks are regenerated.",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
     results = Path(config.results_dir)
     family = config.selected_model.family
-
-    readme = Path(args.readme)
-    text = readme.read_text(encoding="utf-8")
-    for name, content in (
-        ("protocol", protocol_table(results)),
-        ("models", model_table(results)),
-        ("imbalance", imbalance_table(results, family)),
-        ("calibration", calibration_table(results, family)),
-        ("behavioural", behavioural_table(results)),
-        ("costs", cost_table(results, config.cost.alert_cost)),
-        ("attributions", attribution_table(results)),
-    ):
-        text = replace_block(text, name, content)
-    readme.write_text(text, encoding="utf-8")
-    print(f"{readme} updated from {results}/")
+    blocks = {
+        "protocol": lambda: protocol_table(results),
+        "models": lambda: model_table(results),
+        "imbalance": lambda: imbalance_table(results, family),
+        "calibration": lambda: calibration_table(results, family),
+        "behavioural": lambda: behavioural_table(results),
+        "costs": lambda: cost_table(results, config.cost.alert_cost),
+        "attributions": lambda: attribution_table(results),
+        "final": lambda: final_table(results),
+        "final_sensitivity": lambda: final_sensitivity_table(results),
+        "final_simulated": lambda: final_simulated_table(results),
+    }
+    for document in args.documents:
+        path = Path(document)
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        present = [name for name in blocks if f"<!-- BEGIN:{name} -->" in text]
+        for name in present:
+            text = replace_block(text, name, blocks[name]())
+        path.write_text(text, encoding="utf-8")
+        print(f"{path}: {len(present)} blocks regenerated from {results}/")
 
 
 if __name__ == "__main__":
