@@ -85,6 +85,7 @@ class Config:
     simulation: SimulationConfig
     behavioural: BehaviouralConfig
     cost: CostConfig
+    model_dir: str
     results_dir: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -107,6 +108,7 @@ def load_config(path: str | Path) -> Config:
         simulation=SimulationConfig(**raw["simulation"]),
         behavioural=BehaviouralConfig(**raw["behavioural"]),
         cost=CostConfig(**raw["cost"]),
+        model_dir=str(raw["model_dir"]),
         results_dir=str(raw["results_dir"]),
     )
 

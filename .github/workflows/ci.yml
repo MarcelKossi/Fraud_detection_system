@@ -19,3 +19,24 @@ jobs:
         run: ruff check .
       - name: Test
         run: pytest -q
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -t fraud-detection-api .
+      - name: Start the service
+        run: |
+          docker run -d --name api -p 8000:8000 fraud-detection-api
+          for attempt in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8000/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          docker logs api
+          exit 1
+      - name: Check the service against the examples stored with the model
+        run: python .github/scripts/check_service.py http://127.0.0.1:8000 models/fraud_model/examples.json
+      - name: Show the logs on failure
+        if: failure()
+        run: docker logs api

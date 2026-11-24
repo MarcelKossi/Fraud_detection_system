@@ -12,6 +12,7 @@ from typing import Any
 import numpy
 import pandas
 import sklearn
+import xgboost
 
 
 def _git(*args: str) -> str | None:
@@ -39,6 +40,7 @@ def run_metadata(config: dict[str, Any], data_sha256: str) -> dict[str, Any]:
             "numpy": numpy.__version__,
             "pandas": pandas.__version__,
             "scikit-learn": sklearn.__version__,
+            "xgboost": xgboost.__version__,
         },
     }
 

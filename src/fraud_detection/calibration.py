@@ -41,6 +41,12 @@ class ScoreCalibrator:
             self._model.fit(scores, y_true)
         return self
 
+    def coefficients(self) -> tuple[float, float]:
+        """Slope and intercept of the sigmoid calibration on the log-odds scale."""
+        if self.method != "sigmoid" or self._model is None:
+            raise ValueError("Coefficients are defined for a fitted sigmoid calibrator only")
+        return float(self._model.coef_[0, 0]), float(self._model.intercept_[0])
+
     def transform(self, scores: np.ndarray) -> np.ndarray:
         scores = np.asarray(scores, dtype=float)
         if self.method == "sigmoid":

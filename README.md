@@ -5,23 +5,22 @@ Supervised detection of fraudulent card transactions on a highly imbalanced data
 transactions, with the aim of a deployable prototype: a trained and calibrated model,
 a validated REST API and an interactive dashboard.
 
-> **Status — version 2 in progress.** Steps 1 to 5 of the roadmap below are complete:
-> evaluation protocol, reference measurements, model selection, behavioural features,
-> cost-based decision rule and explanation of predictions.
-> The serving layer
-> (`api/`, `dashboard/`) still dates from the first version and is rewritten in step 6.
-> The first version is preserved under the tag `v0-legacy`.
+> **Status — version 2 in progress.** Steps 1 to 6 of the roadmap below are complete.
+> The final evaluation on the hold-out set (step 7) has not been run: the performance of
+> the model in service is so far known by cross-validation only. The first version is
+> preserved under the tag `v0-legacy`.
 
 ## Contents
 
 1. [Results so far](#results-so-far)
 2. [Method](#method)
-3. [Reproducing the results](#reproducing-the-results)
-4. [Repository layout](#repository-layout)
-5. [Roadmap](#roadmap)
-6. [Limitations](#limitations)
-7. [History](#history)
-8. [References](#references)
+3. [Prediction service](#prediction-service)
+4. [Reproducing the results](#reproducing-the-results)
+5. [Repository layout](#repository-layout)
+6. [Roadmap](#roadmap)
+7. [Limitations](#limitations)
+8. [History](#history)
+9. [References](#references)
 
 ## Results so far
 
@@ -240,6 +239,88 @@ model is validated on transactions older than its training data, that re-samplin
 never applied to validation data, and that no behavioural feature depends on later
 transactions or on labels younger than the label delay. They run in continuous integration on every push.
 
+## Prediction service
+
+The model in service is stored in `models/fraud_model/`: the classifier in the native
+JSON format of XGBoost and a metadata file holding the calibration coefficients, the
+decision rule and the provenance of the model. No pickled object is used. The model is
+trained on the development set only, so that it can be evaluated once on the hold-out
+set in step 7.
+
+**API.**
+
+```bash
+pip install -e ".[api]"
+uvicorn api.main:app --port 8000
+```
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Liveness of the service and availability of the model |
+| `GET /version` | Provenance of the model: training data checksum, commit, calibration, decision rule |
+| `POST /predict` | Probability of fraud, decision and, on request, explanation for one transaction |
+| `GET /docs` | Interactive documentation |
+
+A request gives the 30 fields of a transaction by name (`time_seconds`, `amount`, `V1`
+to `V28`). Missing, unknown, negative-amount or non-finite values are rejected with a
+422 status. Example, abridged, for a fraud of the development period:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/predict?explain=true&top_k=2" \
+     -H "Content-Type: application/json" -d @transaction.json
+```
+
+```json
+{
+  "fraud_probability": 0.9109,
+  "decision": {
+    "rule": "expected_cost",
+    "alert_cost": 10.0,
+    "expected_loss": 1648.49,
+    "alert": true
+  },
+  "model_version": "0.2.0",
+  "explanation": {
+    "scale": "log-odds",
+    "base_value": -5.886,
+    "prediction": 2.325,
+    "contributions": [
+      {"feature": "V14", "value": -3.738, "contribution": 1.661},
+      {"feature": "V12", "value": -6.998, "contribution": 1.573}
+    ],
+    "other_contributions": 4.977
+  }
+}
+```
+
+The contributions are expressed on the calibrated log-odds scale; with the base value,
+they add up to the log-odds of the returned probability.
+
+**Dashboard.**
+
+```bash
+pip install -e ".[dashboard]"
+streamlit run dashboard/streamlit_app.py
+```
+
+The dashboard sends a transaction to the API and displays the probability, the decision
+and the largest contributions. Four transactions of the development period, stored with
+the model, can be loaded as examples; one of them is a fraud of small amount that the
+decision rule deliberately does not flag.
+
+**Container.**
+
+```bash
+docker build -t fraud-detection-api .
+docker run -p 8000:8000 fraud-detection-api
+```
+
+The image contains the API and the model, without the experiment dependencies. It is
+built and checked against the stored examples in continuous integration.
+
+**Scope.** This is a prototype. It has no authentication, no rate limiting, no request
+logging and no monitoring of input drift, all of which a production service requires.
+
 ## Reproducing the results
 
 Python 3.11 is required.
@@ -262,6 +343,7 @@ python scripts/run_model_selection.py   # results 2 to 4, about 35 minutes on 2 
 python scripts/run_behavioural_features.py   # result 5, about 25 minutes on 2 cores
 python scripts/run_cost_analysis.py          # result 6, about 2 minutes on 2 cores
 python scripts/run_explanations.py           # result 7, about 2 minutes on 2 cores
+python scripts/train_final_model.py          # model in service, a few seconds
 python scripts/update_readme.py         # regenerate the tables of this file
 ```
 
@@ -287,12 +369,16 @@ src/fraud_detection/       installable package
     behavioural.py         customer and terminal aggregates
     costs.py               cost model and decision rules
     explain.py             attribution of predictions to features
+    serving.py             deployable model: probability, decision, explanation
     experiment.py          provenance of results
 scripts/                   experiment entry points
 tests/                     unit tests
 results/                   metrics (JSON) and generated summaries
 docs/                      journal and decision log
-api/, dashboard/           serving layer of the first version (rewritten in step 6)
+models/fraud_model/        model in service, its metadata and example transactions
+api/                       REST API
+dashboard/                 Streamlit dashboard
+Dockerfile                 container image of the API
 notebooks/                 exploratory analysis of the first version
 ```
 
@@ -305,7 +391,7 @@ notebooks/                 exploratory analysis of the first version
 | 3 | Behavioural features on a dataset with card and terminal identifiers | Done |
 | 4 | Cost-based decision rule | Done |
 | 5 | Explanation of individual predictions | Done |
-| 6 | Deployable prototype: single pipeline, validated API, container | Planned |
+| 6 | Deployable prototype: serialised model, validated API, dashboard, container | Done |
 | 7 | Final evaluation on the hold-out set, model card, technical report | Planned |
 
 ## Limitations

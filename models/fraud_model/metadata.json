@@ -1,0 +1,73 @@
+{
+  "feature_names": [
+    "V1",
+    "V2",
+    "V3",
+    "V4",
+    "V5",
+    "V6",
+    "V7",
+    "V8",
+    "V9",
+    "V10",
+    "V11",
+    "V12",
+    "V13",
+    "V14",
+    "V15",
+    "V16",
+    "V17",
+    "V18",
+    "V19",
+    "V20",
+    "V21",
+    "V22",
+    "V23",
+    "V24",
+    "V25",
+    "V26",
+    "V27",
+    "V28",
+    "Amount",
+    "hour_sin",
+    "hour_cos"
+  ],
+  "calibration": {
+    "method": "sigmoid",
+    "slope": 0.9564343240581555,
+    "intercept": -0.10232959611491876
+  },
+  "decision": {
+    "rule": "expected_cost",
+    "alert_cost": 10.0
+  },
+  "n_fit": 181585,
+  "n_fit_frauds": 347,
+  "n_calibration": 45396,
+  "n_calibration_frauds": 52,
+  "model_version": "0.2.0",
+  "family": "xgboost",
+  "params": {
+    "colsample_bytree": 0.6210276357557503,
+    "learning_rate": 0.05967212083511124,
+    "max_depth": 4,
+    "min_child_weight": 1.9551434125044704,
+    "n_estimators": 500,
+    "reg_lambda": 8.182111518618424,
+    "subsample": 0.6838915663596266
+  },
+  "seed": 42,
+  "training_period": "development set (hold-out set excluded)",
+  "n_holdout_excluded": 56745,
+  "trained_at_utc": "2026-11-24T15:56:09+00:00",
+  "git_commit": "53017e81bd8fa506b048e1685667c31f011f88a7",
+  "data_sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+  "environment": {
+    "python": "3.11.18",
+    "platform": "Linux-6.18.44-fc-v819-x86_64-with-glibc2.39",
+    "numpy": "2.4.3",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.8.0",
+    "xgboost": "3.2.0"
+  }
+}

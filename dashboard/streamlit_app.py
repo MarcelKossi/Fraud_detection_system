@@ -1,121 +1,143 @@
-import streamlit as st
+"""Dashboard of the prediction service.
+
+Run with::
+
+    streamlit run dashboard/streamlit_app.py
+
+The address of the API is read from the environment variable ``FRAUD_API_URL``
+(default: ``http://127.0.0.1:8000``).
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+
+import pandas as pd
 import requests
-import numpy as np
+import streamlit as st
 
-# st.markdown("""
-# <style>
+API_URL = os.environ.get("FRAUD_API_URL", "http://127.0.0.1:8000").rstrip("/")
+EXAMPLES_PATH = Path(__file__).resolve().parents[1] / "models" / "fraud_model" / "examples.json"
+COMPONENTS = [f"V{i}" for i in range(1, 29)]
+FIELDS = ["time_seconds", "amount", *COMPONENTS]
+TIMEOUT_SECONDS = 10
+CUSTOM = "Custom transaction"
 
-# .stApp {
-#     background-color: #0e1117;
-#     color: white;
-# }
 
-# section[data-testid="stSidebar"] {
-#     background-color: #111827;
-# }
+def call_api(method: str, path: str, **kwargs) -> tuple[dict | None, str | None]:
+    """Call the API; return the decoded response or an error message."""
+    try:
+        response = requests.request(method, f"{API_URL}{path}", timeout=TIMEOUT_SECONDS, **kwargs)
+    except requests.RequestException as error:
+        return None, f"The API at {API_URL} cannot be reached ({type(error).__name__})."
+    if response.status_code != 200:
+        return None, f"The API answered with status {response.status_code}: {response.text[:300]}"
+    return response.json(), None
 
-# div.stButton > button {
-#     background-color: #2463eb;
-#     color: white;
-#     border-radius: 8px;
-#     height: 3em;
-# }
 
-# div.stButton > button:hover {
-#     background-color: #1d4fd8;
-#     color: white;
-# }
+def load_examples() -> list[dict]:
+    if not EXAMPLES_PATH.exists():
+        return []
+    return json.loads(EXAMPLES_PATH.read_text(encoding="utf-8"))
 
-# [data-testid="metric-container"] {
-#     background-color: #1f2937;
-#     border-radius: 10px;
-#     padding: 15px;
-# }
 
-# </style>
-# """, unsafe_allow_html=True)
+def apply_example() -> None:
+    """Copy the selected example into the input fields."""
+    selected = st.session_state["example"]
+    for example in load_examples():
+        if example["label"] == selected:
+            for field in FIELDS:
+                st.session_state[field] = float(example["transaction"][field])
 
-API_URL = "http://127.0.0.1:8000/predict"
 
-st.set_page_config(
-    page_title="Fraud Detection System",
-    page_icon="💳",
-    layout="wide"
+st.set_page_config(page_title="Fraud detection", layout="wide")
+st.title("Credit card fraud detection")
+st.caption(
+    "Calibrated probability of fraud, cost-based decision and explanation for one "
+    "transaction, as returned by the prediction service."
 )
 
-st.title("💳 Credit Card Fraud Detection Dashboard")
+for field in FIELDS:
+    st.session_state.setdefault(field, 0.0)
 
-st.markdown(
-"""
-This dashboard interacts with the **Fraud Detection API** to evaluate whether a
-transaction is potentially fraudulent.
+with st.sidebar:
+    st.header("Service")
+    st.code(API_URL)
+    version, error = call_api("GET", "/version")
+    if error:
+        st.error(error)
+    else:
+        st.success("Model in service")
+        st.write(f"Model version: `{version.get('model_version', 'unknown')}`")
+        st.write(f"Trained: `{version.get('trained_at_utc', 'unknown')}`")
+        st.write(f"Decision rule: `{version['decision']['rule']}`")
+        st.write(f"Alert cost: `{version['decision']['alert_cost']}`")
 
-Model: **Random Forest Classifier**
-"""
-)
+examples = load_examples()
+if examples:
+    st.selectbox(
+        "Example transaction",
+        [CUSTOM, *[example["label"] for example in examples]],
+        key="example",
+        on_change=apply_example,
+        help="Transactions of the development period, stored with the model.",
+    )
 
-st.divider()
+left, right = st.columns([3, 2])
 
-col1, col2 = st.columns([2,1])
+with left:
+    st.subheader("Transaction")
+    first, second = st.columns(2)
+    first.number_input("Amount", min_value=0.0, key="amount", format="%.2f")
+    second.number_input(
+        "Time (seconds since the origin of the dataset)",
+        min_value=0.0,
+        key="time_seconds",
+        format="%.0f",
+        help="Only the time of day, i.e. this value modulo 24 hours, is used.",
+    )
+    with st.expander("Principal components V1 to V28", expanded=not examples):
+        columns = st.columns(4)
+        for index, name in enumerate(COMPONENTS):
+            columns[index % 4].number_input(name, key=name, format="%.4f")
+    submitted = st.button("Score the transaction", type="primary")
 
-with col1:
-
-    st.subheader("Transaction Features")
-
-    st.markdown("Provide the 30 transaction features used by the model.")
-
-    features = []
-
-    cols = st.columns(5)
-
-    for i in range(30):
-        with cols[i % 5]:
-            val = st.number_input(f"Feature {i+1}", value=0.0)
-            features.append(val)
-
-with col2:
-
-    st.subheader("Prediction")
-
-    if st.button("Analyze Transaction"):
-
-        payload = {"features": features}
-
-        response = requests.post(API_URL, json=payload)
-
-        if response.status_code == 200:
-
-            result = response.json()
-
-            prediction = result["prediction"]
-            prob = result["fraud_probability"]
-
-            if prediction == 1:
-                st.error("🚨 Fraudulent Transaction Detected")
-            else:
-                st.success("✅ Transaction Appears Legitimate")
-
-            st.metric("Fraud Probability", f"{prob:.2%}")
-
+with right:
+    st.subheader("Result")
+    if submitted:
+        payload = {field: float(st.session_state[field]) for field in FIELDS}
+        result, error = call_api(
+            "POST", "/predict", params={"explain": "true", "top_k": 8}, json=payload
+        )
+        if error:
+            st.error(error)
         else:
-            st.warning("API error. Check FastAPI server.")
+            decision = result["decision"]
+            if decision["alert"]:
+                st.error("Alert: the expected loss exceeds the cost of an alert.")
+            else:
+                st.success("No alert: the expected loss is below the cost of an alert.")
+            a, b, c = st.columns(3)
+            a.metric("Fraud probability", f"{result['fraud_probability']:.2%}")
+            b.metric("Expected loss", f"{decision['expected_loss']:.2f}")
+            c.metric("Alert cost", f"{decision['alert_cost']:.2f}")
 
-st.divider()
-
-st.subheader("System Architecture")
-
-st.code(
-"""
-User Transaction
-        ↓
-Streamlit Dashboard
-        ↓
-FastAPI API
-        ↓
-RandomForest Model
-        ↓
-Fraud Prediction
-"""
-)
-
-st.caption("Fraud Detection System — AI/ML Project")
+            explanation = result["explanation"]
+            st.markdown("**Largest contributions to the log-odds of fraud**")
+            table = pd.DataFrame(explanation["contributions"])
+            st.dataframe(
+                table.style.format({"value": "{:.4f}", "contribution": "{:+.3f}"}),
+                hide_index=True,
+                width="stretch",
+            )
+            st.caption(
+                f"Base value {explanation['base_value']:+.3f}; other features "
+                f"{explanation['other_contributions']:+.3f}; total "
+                f"{explanation['prediction']:+.3f}. A positive contribution raises the "
+                "predicted probability. Contributions describe the model, not the causes "
+                "of fraud."
+            )
+    else:
+        st.info("Select an example or enter a transaction, then score it.")

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from imblearn.over_sampling import SMOTE
 
 STRATEGIES = ("none", "class_weight", "undersampling", "smote")
 
@@ -34,6 +33,8 @@ def oversample_smote(
     X: pd.DataFrame, y: pd.Series, ratio: float, seed: int
 ) -> tuple[pd.DataFrame, pd.Series]:
     """Add synthetic frauds by SMOTE until the fraud-to-legitimate ratio reaches ``ratio``."""
+    from imblearn.over_sampling import SMOTE  # experiment-only dependency
+
     return SMOTE(sampling_strategy=ratio, random_state=seed).fit_resample(X, y)
 
 

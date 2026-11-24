@@ -437,3 +437,83 @@ The hold-out set is not read.
 ### Next
 
 Step 6: deployable prototype (single serialised pipeline, validated API, container).
+
+---
+
+## 2026-11-24 — Step 6: deployable prototype
+
+### Objective
+
+Turn the retained configuration into a model that can be served: one stored model, a
+validated API returning the probability, the decision and the explanation, a dashboard,
+and a container image.
+
+### What was run
+
+```
+python scripts/train_final_model.py
+pytest -q
+uvicorn api.main:app --port 8000
+python .github/scripts/check_service.py http://127.0.0.1:8000 models/fraud_model/examples.json
+```
+
+### What was built
+
+- **Stored model** (`models/fraud_model/`). The classifier is saved in the native JSON
+  format of XGBoost; calibration coefficients, decision rule, feature names and
+  provenance are saved in `metadata.json`. No pickled object is used: loading the model
+  cannot execute code and does not depend on the version of scikit-learn. A reload check
+  is part of the training script.
+- **Training**. XGBoost configuration of D2, on the development set only: classifier
+  fitted on the first 181,585 transactions (347 frauds), sigmoid calibrator on the next
+  45,396 (52 frauds). The hold-out set is excluded, so that this exact model can be
+  evaluated on it once in step 7. Calibration slope 0.956, intercept -0.102: the
+  classifier was already close to calibrated.
+- **API** (`api/`). `GET /health`, `GET /version`, `POST /predict`. A request names its
+  30 fields; missing, unknown, negative or non-finite values are rejected. The response
+  holds the calibrated probability, the expected-cost decision of D3 and, on request,
+  the contributions of the features on the calibrated log-odds scale.
+- **Dashboard** (`dashboard/`). Sends a transaction to the API and displays the result.
+- **Container** (`Dockerfile`). API and model without the experiment dependencies, which
+  were moved to an optional group of the package.
+- **Continuous integration**. A second job builds the image, starts the service and
+  checks it against the example transactions stored with the model.
+
+### Verification
+
+- 95 unit tests pass, 16 of them on the model in service and the API: round trip of the
+  stored model, independence from column order and from the day, decision rule,
+  additivity of the explanation, validation of requests, behaviour without a model.
+- The four examples stored with the model are reproduced by the running API to within
+  10⁻⁵.
+- The dashboard was exercised end to end against the running API with the testing
+  utility of Streamlit.
+- The container image could not be built in the environment where this step was carried
+  out; its first build is the one of continuous integration.
+
+### Defect found and corrected
+
+A request containing a non-finite number caused an internal error instead of a
+validation error: the default error handler echoes the submitted value, which cannot be
+encoded as JSON. The handler was replaced by one that reports the location and the
+nature of the error without echoing the input. A test covers this case.
+
+### Observation on the decision rule
+
+Among the examples stored with the model, a fraud of amount 1.00 receives a probability
+of 0.998 and raises no alert, because its expected loss is below the alert cost. This is
+the accepted consequence of D3; the probability remains available in the response for
+any other policy.
+
+### Limits
+
+- The service has no authentication, rate limiting, request logging nor monitoring of
+  input drift.
+- The time field is the elapsed time of the dataset; only its value modulo 24 hours is
+  used, and the clock time of its origin is not documented by the dataset.
+- The performance of the stored model is known by cross-validation only until step 7.
+
+### Next
+
+Step 7: single evaluation of the stored model on the hold-out set, model card,
+technical report.
