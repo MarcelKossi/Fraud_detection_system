@@ -6,10 +6,23 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 
 N_COMPONENTS = 28
 
+# Plausibility bounds, far beyond the ranges of the training data (components within
+# about +/-120, amounts below 26,000). They reject values that cannot be transactions.
+MAX_ABS_COMPONENT = 1_000.0
+MAX_AMOUNT = 1_000_000.0
+MAX_TIME_SECONDS = 1e9
+
 _component_fields = {
     f"V{i}": (
         float,
-        Field(..., allow_inf_nan=False, description=f"Principal component V{i} of the dataset."),
+        Field(
+            ...,
+            strict=True,
+            ge=-MAX_ABS_COMPONENT,
+            le=MAX_ABS_COMPONENT,
+            allow_inf_nan=False,
+            description=f"Principal component V{i} of the dataset.",
+        ),
     )
     for i in range(1, N_COMPONENTS + 1)
 }
@@ -24,7 +37,9 @@ Transaction = create_model(
         float,
         Field(
             ...,
+            strict=True,
             ge=0,
+            le=MAX_TIME_SECONDS,
             allow_inf_nan=False,
             description=(
                 "Seconds elapsed since the reference origin of the dataset (its `Time` "
@@ -34,7 +49,14 @@ Transaction = create_model(
     ),
     amount=(
         float,
-        Field(..., ge=0, allow_inf_nan=False, description="Transaction amount."),
+        Field(
+            ...,
+            strict=True,
+            ge=0,
+            le=MAX_AMOUNT,
+            allow_inf_nan=False,
+            description="Transaction amount.",
+        ),
     ),
     **_component_fields,
 )

@@ -48,6 +48,70 @@ from fraud_detection.validation import out_of_fold_probabilities
 RULES = ("default_threshold", "cost_optimal_threshold", "expected_cost")
 
 
+RELIABILITY_EDGES = (0.0, 0.001, 0.01, 0.1, 0.2, 0.5, 0.9, 1.0)
+
+
+def paired_savings_difference(
+    y, amount, alerts_new, alerts_old, alert_cost, n_resamples, level, seed
+) -> dict:
+    """Paired bootstrap of the difference in savings between two decision rules.
+
+    Validation transactions are resampled with replacement; for each resample the
+    savings of both rules are averaged over the seeds, and their difference is taken.
+    The interval reflects the sampling of transactions, in particular of the few large
+    fraudulent amounts, which the spread over training seeds does not capture.
+    """
+    rng = np.random.default_rng(seed)
+    n = len(y)
+
+    def difference(index) -> float:
+        reference = no_detection_cost(y[index], amount[index])
+        values = [
+            savings(total_cost(y[index], amount[index], new[index], alert_cost), reference)
+            - savings(total_cost(y[index], amount[index], old[index], alert_cost), reference)
+            for new, old in zip(alerts_new, alerts_old, strict=True)
+        ]
+        return float(np.mean(values))
+
+    samples = []
+    for _ in range(n_resamples):
+        index = rng.integers(0, n, n)
+        if no_detection_cost(y[index], amount[index]) > 0:
+            samples.append(difference(index))
+    alpha = (1.0 - level) / 2.0
+    low, high = np.quantile(samples, [alpha, 1.0 - alpha])
+    return {
+        "value": difference(np.arange(n)),
+        "ci": [float(low), float(high)],
+        "share_positive": float(np.mean(np.array(samples) > 0)),
+    }
+
+
+def reliability_table(y, probabilities_by_seed) -> list[dict]:
+    """Mean predicted probability against observed fraud rate, by probability bin.
+
+    Predictions of all seeds are pooled; ``n`` counts transaction-seed pairs.
+    """
+    probability = np.concatenate(probabilities_by_seed)
+    outcome = np.tile(y, len(probabilities_by_seed))
+    rows = []
+    for low, high in zip(RELIABILITY_EDGES[:-1], RELIABILITY_EDGES[1:], strict=True):
+        inside = (probability > low) & (probability <= high)
+        if low == 0.0:
+            inside |= probability == 0.0
+        if inside.any():
+            rows.append(
+                {
+                    "bin": [low, high],
+                    "n": int(inside.sum()),
+                    "n_frauds": int(outcome[inside].sum()),
+                    "mean_predicted": float(probability[inside].mean()),
+                    "observed_rate": float(outcome[inside].mean()),
+                }
+            )
+    return rows
+
+
 def _mean_reports(reports: list[dict]) -> dict:
     return {key: float(np.mean([report[key] for report in reports])) for key in reports[0]}
 
@@ -98,7 +162,9 @@ def main() -> None:
         alerts_by_rule = {rule: [] for rule in RULES}
         thresholds = []
         for probability in probabilities_by_seed:
-            alerts_by_rule["default_threshold"].append(threshold_rule(probability, 0.5))
+            alerts_by_rule["default_threshold"].append(
+                threshold_rule(probability, config.evaluation.threshold)
+            )
             alerts_by_rule["expected_cost"].append(
                 expected_cost_rule(probability, amount_val, alert_cost)
             )
@@ -145,6 +211,16 @@ def main() -> None:
             "alert_cost": alert_cost,
             "rules": {rule: _mean_reports(reports[rule]) for rule in RULES},
             "savings_per_fold": per_fold,
+            "expected_cost_minus_default_threshold": paired_savings_difference(
+                y_val,
+                amount_val,
+                alerts_by_rule["expected_cost"],
+                alerts_by_rule["default_threshold"],
+                alert_cost,
+                config.evaluation.bootstrap_resamples,
+                config.evaluation.confidence_level,
+                config.seed,
+            ),
             "savings_seed_std": {
                 rule: float(np.std([r["savings"] for r in reports[rule]], ddof=1)) for rule in RULES
             },
@@ -173,6 +249,10 @@ def main() -> None:
             for c in cost_config.sensitivity_alert_costs
         },
         "seeds": selection.seeds,
+        "top_10_frauds_share_of_amount": float(
+            np.sort(fraud_amounts)[-10:].sum() / fraud_amounts.sum()
+        ),
+        "reliability": reliability_table(y_val, probabilities_by_seed),
         "alert_costs": by_cost,
         "metadata": run_metadata(config.to_dict(), sha256_of_file(config.data.raw_path)),
     }

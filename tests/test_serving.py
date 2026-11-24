@@ -150,6 +150,11 @@ def test_predict_with_explanation(client, transactions):
         {"time_seconds": -5.0},
         {"V1": "abc"},
         {"unknown_field": 1.0},
+        {"amount": True},
+        {"amount": "12.5"},
+        {"V14": 1e300},
+        {"amount": 1e12},
+        {"time_seconds": 1e18},
     ],
 )
 def test_invalid_requests_are_rejected(client, transactions, change):
@@ -160,6 +165,14 @@ def test_invalid_requests_are_rejected(client, transactions, change):
         else:
             payload[key] = value
     assert client.post("/predict", json=payload).status_code == 422
+
+
+def test_integers_are_accepted_and_full_explanations_can_be_requested(client, model, transactions):
+    payload = _payload(transactions)
+    payload["amount"] = 12
+    response = client.post("/predict", params={"explain": True, "top_k": 500}, json=payload)
+    assert response.status_code == 200
+    assert len(response.json()["explanation"]["contributions"]) == len(model.feature_names)
 
 
 def test_non_finite_values_are_rejected(client, transactions):

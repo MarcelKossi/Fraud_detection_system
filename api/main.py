@@ -106,7 +106,10 @@ def predict(
     explain: Annotated[
         bool, Query(description="Include the contribution of each feature.")
     ] = False,
-    top_k: Annotated[int, Query(ge=1, le=30, description="Number of contributions reported.")] = 5,
+    top_k: Annotated[
+        int,
+        Query(ge=1, description="Number of contributions reported; capped at the feature count."),
+    ] = 5,
 ) -> Prediction:
     """Score one transaction.
 
@@ -131,5 +134,7 @@ def predict(
             "alert": bool(decision["alert"]),
         },
         model_version=str(model.metadata.get("model_version", "unknown")),
-        explanation=model.explain(frame, top_k=top_k) if explain else None,
+        explanation=(
+            model.explain(frame, top_k=min(top_k, len(model.feature_names))) if explain else None
+        ),
     )

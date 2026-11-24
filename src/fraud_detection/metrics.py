@@ -22,13 +22,13 @@ def auprc(y_true: np.ndarray, scores: np.ndarray) -> float:
 
 def recall_at_fpr(y_true: np.ndarray, scores: np.ndarray, max_fpr: float) -> float:
     """Highest recall reachable while keeping the false-positive rate at or below ``max_fpr``."""
-    fpr, tpr, _ = roc_curve(y_true, scores)
+    fpr, tpr, _ = roc_curve(y_true, scores, drop_intermediate=False)
     return float(tpr[fpr <= max_fpr].max())
 
 
 def threshold_at_fpr(y_true: np.ndarray, scores: np.ndarray, max_fpr: float) -> float:
     """Lowest score threshold whose false-positive rate does not exceed ``max_fpr``."""
-    fpr, _, thresholds = roc_curve(y_true, scores)
+    fpr, _, thresholds = roc_curve(y_true, scores, drop_intermediate=False)
     return float(thresholds[fpr <= max_fpr].min())
 
 

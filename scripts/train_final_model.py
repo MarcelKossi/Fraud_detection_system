@@ -116,6 +116,8 @@ def main() -> None:
             "n_holdout_excluded": int(len(holdout_idx)),
             "trained_at_utc": provenance["timestamp_utc"],
             "git_commit": provenance["git_commit"],
+            "git_uncommitted_changes": provenance["git_uncommitted_changes"],
+            "code_sha256": provenance["code_sha256"],
             "data_sha256": provenance["data_sha256"],
             "environment": provenance["environment"],
         },

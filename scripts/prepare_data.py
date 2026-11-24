@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 
 from fraud_detection.config import load_config
-from fraud_detection.data import deduplicate, load_raw
+from fraud_detection.data import load_raw, prepare
 from fraud_detection.splits import expanding_window_folds, temporal_holdout
 
 
@@ -31,7 +31,7 @@ def main() -> None:
         f"(of which frauds: {int(raw.loc[duplicated, target].sum()):,})"
     )
 
-    clean = deduplicate(raw)
+    clean = prepare(raw, time_column)
     dev_idx, test_idx = temporal_holdout(len(clean), config.split.test_fraction)
     print(f"After de-duplication: {len(clean):,} rows, {int(clean[target].sum()):,} frauds")
     for name, idx in (("development", dev_idx), ("hold-out", test_idx)):

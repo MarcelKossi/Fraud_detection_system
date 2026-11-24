@@ -112,7 +112,11 @@ def paired_bootstrap(y, amount, new, old, config: Config) -> dict:
         "share_of_resamples_where_new_is_better": {
             key: float(np.mean([s[key] > 0 for s in samples["difference"]]))
             for key in point["difference"]
-        }
+        },
+        "share_of_resamples_with_no_difference": {
+            key: float(np.mean([s[key] == 0 for s in samples["difference"]]))
+            for key in point["difference"]
+        },
     }
 
 
@@ -141,10 +145,13 @@ def evaluate_main_dataset(config: Config) -> dict:
     first_scores = first_version.predict_proba(X_test)[:, 1]
 
     systems = {
-        "first_version": {"scores": first_scores, "alert": threshold_rule(first_scores, 0.5)},
+        "first_version": {
+            "scores": first_scores,
+            "alert": threshold_rule(first_scores, ev.threshold),
+        },
         "retained_model_threshold": {
             "scores": probability,
-            "alert": threshold_rule(probability, 0.5),
+            "alert": threshold_rule(probability, ev.threshold),
         },
         "retained_model_expected_cost": {
             "scores": probability,
@@ -157,7 +164,7 @@ def evaluate_main_dataset(config: Config) -> dict:
             "ranking": evaluate_scores(
                 y,
                 system["scores"],
-                threshold=0.5,
+                threshold=ev.threshold,
                 max_fpr=ev.max_fpr,
                 n_resamples=ev.bootstrap_resamples,
                 confidence_level=ev.confidence_level,
@@ -176,7 +183,8 @@ def evaluate_main_dataset(config: Config) -> dict:
                 total_cost(y, amount, systems["first_version"]["alert"], alert_cost), reference
             ),
             "retained_model_threshold": savings(
-                total_cost(y, amount, threshold_rule(probability, 0.5), alert_cost), reference
+                total_cost(y, amount, threshold_rule(probability, ev.threshold), alert_cost),
+                reference,
             ),
             "retained_model_expected_cost": savings(
                 total_cost(
@@ -186,6 +194,18 @@ def evaluate_main_dataset(config: Config) -> dict:
             ),
             "oracle": savings(oracle_cost(y, amount, alert_cost), reference),
         }
+
+    # Per-transaction scores are kept so that further analyses of this evaluation
+    # (ties, reliability, other decision rules) do not require reading the data again.
+    scores_path = Path(config.results_dir) / "final" / "holdout_scores.npz"
+    scores_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        scores_path,
+        is_fraud=y,
+        amount=amount,
+        first_version_score=first_scores,
+        retained_model_probability=probability,
+    )
 
     return {
         "n_holdout": int(len(y)),
