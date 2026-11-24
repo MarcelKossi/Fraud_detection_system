@@ -5,8 +5,9 @@ Supervised detection of fraudulent card transactions on a highly imbalanced data
 transactions, with the aim of a deployable prototype: a trained and calibrated model,
 a validated REST API and an interactive dashboard.
 
-> **Status — version 2 in progress.** Steps 1 to 3 of the roadmap below are complete:
-> evaluation protocol, reference measurements, model selection and behavioural features.
+> **Status — version 2 in progress.** Steps 1 to 4 of the roadmap below are complete:
+> evaluation protocol, reference measurements, model selection, behavioural features and
+> cost-based decision rule.
 > The serving layer
 > (`api/`, `dashboard/`) still dates from the first version and is rewritten in step 6.
 > The first version is preserved under the tag `v0-legacy`.
@@ -133,6 +134,37 @@ real fraud. The hyper-parameters are those selected on the main dataset and were
 tuned again, which penalises the smallest feature sets. And the terminal risk is known
 with a seven-day delay, which bounds the detection of a terminal compromised for 28 days.
 
+### 6. Weighing each alert by the amount at stake lowers the cost of fraud
+
+A probability must be turned into a decision. The decision rules below are compared
+under an explicit cost model: every alert costs a fixed handling cost, and a fraud that
+raises no alert costs the amount of the transaction. Savings are the share of the
+fraudulent amounts that is avoided, net of the cost of the alerts. The probabilities are
+those of the retained, calibrated model on the validation periods of the main dataset.
+
+<!-- BEGIN:costs -->
+| Decision rule | Savings, alert cost 5 | Savings, alert cost 10 | Savings, alert cost 25 | Alerts per 100,000 (alert cost 10) | Precision | Recall |
+|---|---|---|---|---|---|---|
+| Probability threshold of 0.5 (first version) | 66.0% | 63.1% | 54.6% | 116 | 0.874 | 0.716 |
+| Cost-optimal probability threshold | 66.0% | 62.3% | 53.0% | 140 | 0.749 | 0.739 |
+| Expected-cost rule (probability x amount > alert cost) | 71.0% | 66.3% | 60.6% | 134 | 0.435 | 0.412 |
+| Oracle (upper bound) | 97.6% | 95.7% | 90.4% | | | |
+<!-- END:costs -->
+
+The expected-cost rule alerts when the probability of fraud multiplied by the amount
+exceeds the cost of an alert. It follows from the cost model, has no fitted parameter
+and gives the highest savings for the three alert costs considered, in every validation
+period for alert costs of 10 and 25 and in three periods out of four for an alert cost
+of 5. It does so by concentrating alerts on large amounts: it flags fewer frauds than a
+threshold of 0.5 but the more expensive ones. A single probability threshold tuned for
+cost does not improve on 0.5; its value varies widely from one period to another.
+
+Three reservations apply. The alert costs are assumptions, not measured costs of a
+card issuer. Half of the frauds of the validation periods are worth less than 19, and
+the rule deliberately ignores most of them, whereas a small fraud may in practice
+precede larger ones on the same card. And the gap to the oracle remains large: the
+remaining cost comes from frauds to which the model assigns a low probability.
+
 ### Not yet available
 
 The performance of the retained model on the hold-out set is deliberately not reported
@@ -193,6 +225,7 @@ python scripts/prepare_data.py          # checksum, duplicates, partitions
 python scripts/run_baseline.py          # result 1, about 10 minutes on 2 cores
 python scripts/run_model_selection.py   # results 2 to 4, about 35 minutes on 2 cores
 python scripts/run_behavioural_features.py   # result 5, about 25 minutes on 2 cores
+python scripts/run_cost_analysis.py          # result 6, about 2 minutes on 2 cores
 python scripts/update_readme.py         # regenerate the tables of this file
 ```
 
@@ -216,6 +249,7 @@ src/fraud_detection/       installable package
     validation.py          cross-validated evaluation
     simulation.py          simulator of transactions with identifiers
     behavioural.py         customer and terminal aggregates
+    costs.py               cost model and decision rules
     experiment.py          provenance of results
 scripts/                   experiment entry points
 tests/                     unit tests
@@ -232,7 +266,7 @@ notebooks/                 exploratory analysis of the first version
 | 1 | Reference measurements, temporal protocol, tests | Done |
 | 2 | Model selection, imbalance treatments, calibration | Done |
 | 3 | Behavioural features on a dataset with card and terminal identifiers | Done |
-| 4 | Cost-based decision threshold | Planned |
+| 4 | Cost-based decision rule | Done |
 | 5 | Explanation of individual predictions | Planned |
 | 6 | Deployable prototype: single pipeline, validated API, container | Planned |
 | 7 | Final evaluation on the hold-out set, model card, technical report | Planned |

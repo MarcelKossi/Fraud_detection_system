@@ -98,3 +98,33 @@ def cross_validate_calibration(
                 per_method[method][name].append(value)
             per_method[method]["auprc"].append(auprc(y_val, calibrated))
     return per_method
+
+
+def out_of_fold_probabilities(
+    family: str,
+    params: dict[str, Any],
+    X: pd.DataFrame,
+    y: pd.Series,
+    folds: Folds,
+    *,
+    seed: int,
+    strategy: str,
+    ratio: float,
+    calibration: str,
+    calibration_fraction: float,
+) -> list[np.ndarray]:
+    """Calibrated probabilities of fraud on each validation fold.
+
+    As in :func:`cross_validate_calibration`, the classifier is fitted on the first part
+    of each training window and the calibrator on its last ``calibration_fraction``.
+    """
+    probabilities = []
+    for train_idx, val_idx in folds:
+        cut = int(round(len(train_idx) * (1.0 - calibration_fraction)))
+        fit_idx, cal_idx = train_idx[:cut], train_idx[cut:]
+        model = fit_on_fold(family, params, X.iloc[fit_idx], y.iloc[fit_idx], strategy, ratio, seed)
+        calibrator = ScoreCalibrator(calibration).fit(
+            model.predict_proba(X.iloc[cal_idx])[:, 1], y.iloc[cal_idx].to_numpy()
+        )
+        probabilities.append(calibrator.transform(model.predict_proba(X.iloc[val_idx])[:, 1]))
+    return probabilities

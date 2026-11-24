@@ -79,4 +79,11 @@ behavioural:
     raw_terminal: [raw, terminal]
     all: [raw, calendar, customer, terminal]
 
+cost:
+  # Handling cost of one alert, in the currency of the amounts (decision D3).
+  alert_cost: 10.0
+  # Alternative values used for the sensitivity analysis.
+  sensitivity_alert_costs: [5.0, 10.0, 25.0]
+  amount_column: Amount
+
 results_dir: results

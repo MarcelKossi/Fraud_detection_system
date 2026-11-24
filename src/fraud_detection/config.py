@@ -66,6 +66,13 @@ class BehaviouralConfig:
 
 
 @dataclass(frozen=True)
+class CostConfig:
+    alert_cost: float
+    sensitivity_alert_costs: list[float]
+    amount_column: str
+
+
+@dataclass(frozen=True)
 class Config:
     seed: int
     data: DataConfig
@@ -76,6 +83,7 @@ class Config:
     selected_model: SelectedModelConfig
     simulation: SimulationConfig
     behavioural: BehaviouralConfig
+    cost: CostConfig
     results_dir: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -97,6 +105,7 @@ def load_config(path: str | Path) -> Config:
         selected_model=SelectedModelConfig(**raw["selected_model"]),
         simulation=SimulationConfig(**raw["simulation"]),
         behavioural=BehaviouralConfig(**raw["behavioural"]),
+        cost=CostConfig(**raw["cost"]),
         results_dir=str(raw["results_dir"]),
     )
 

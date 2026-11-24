@@ -293,3 +293,84 @@ first fold, trained on 22 days only, AUPRC with all features is 0.555 against 0.
 ### Next
 
 Step 4: cost-based decision threshold on the main dataset.
+
+---
+
+## 2026-11-24 — Step 4: cost-based decision rule
+
+### Objective
+
+Replace the default threshold of 0.5 by a decision rule justified by the cost of
+errors, for use by the prediction service.
+
+### What was run
+
+```
+python scripts/run_cost_analysis.py
+python scripts/update_readme.py
+```
+
+Results are in `results/cost/`.
+
+### Cost model
+
+Every alert costs a fixed handling cost, whether justified or not. A fraud that raises
+no alert costs the amount of the transaction. The reference alert cost is 10; values of
+5 and 25 are used to assess sensitivity (decision D3). Savings are defined as one minus
+the ratio of the total cost to the cost without any detection.
+
+### Protocol
+
+Calibrated probabilities of the retained model are computed on the four validation
+periods of the development set (181,584 transactions, 257 frauds, fraudulent amounts
+totalling 37,006), for five seeds. Three rules are costed: a threshold of 0.5; a single
+threshold minimising the cost, chosen for each period on the three other periods; and
+the expected-cost rule, which alerts when probability x amount exceeds the alert cost.
+The oracle, which alerts exactly on the frauds worth more than an alert, gives the upper
+bound. The hold-out set is not read.
+
+### Observations
+
+| Rule | Savings, cost 5 | Savings, cost 10 | Savings, cost 25 | Alerts per 100,000 (cost 10) | Recall (cost 10) |
+|---|---|---|---|---|---|
+| Threshold 0.5 | 66.0% | 63.1% | 54.6% | 116 | 0.716 |
+| Cost-optimal threshold | 66.0% | 62.3% | 53.0% | 140 | 0.739 |
+| Expected-cost rule | 71.0% | 66.3% | 60.6% | 134 | 0.412 |
+| Oracle | 97.6% | 95.7% | 90.4% | | |
+
+- The expected-cost rule gives the highest savings for the three alert costs. Its
+  advantage over the threshold of 0.5 (3 to 6 points) is several times the standard
+  deviation over seeds (below 0.01), and holds in each of the four periods for alert
+  costs of 10 and 25, and in three of four for an alert cost of 5.
+- It flags 41% of the frauds against 72% for the threshold of 0.5, with a comparable
+  number of alerts: it trades many small frauds for fewer, larger ones. The median
+  fraudulent amount is 19, and 47% of the frauds are worth 10 or less.
+- The cost-optimal threshold does not improve on 0.5. Chosen on three periods and
+  applied to the fourth, it ranges from 0.05 to 0.82 for an alert cost of 10.
+- Savings differ strongly between periods (0.41 to 0.76 for the threshold of 0.5 at an
+  alert cost of 10); the third period contains expensive frauds that the model misses.
+
+### Interpretation
+
+- The expectation that a cost-tuned threshold would be clearly lower than 0.5 and would
+  save more is not confirmed: with 257 frauds and a cost dominated by a few large
+  amounts, the optimal threshold is too unstable to be estimated.
+- The expected-cost rule avoids this estimation altogether, which explains its
+  robustness; it depends on the quality of the calibration instead.
+- The remaining gap to the oracle is due to the model, not to the rule: a missed fraud
+  under this rule is a fraud to which the model gave a low probability.
+
+### Caveats
+
+- The alert costs are assumptions. The ranking of the rules is stable over the three
+  values tested, the size of the savings is not.
+- The cost model values each transaction in isolation. It ignores that a small fraud
+  may precede larger ones on the same card, and any cost of a blocked legitimate
+  customer beyond the handling cost.
+- The threshold of each period is chosen using the other periods, some of which are
+  later; this slightly favours the cost-optimal threshold, which nevertheless does not
+  win.
+
+### Next
+
+Step 5: explanation of individual predictions.

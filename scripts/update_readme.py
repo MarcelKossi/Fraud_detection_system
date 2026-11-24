@@ -125,6 +125,37 @@ def behavioural_table(results: Path) -> str:
     return "\n".join(rows)
 
 
+def cost_table(results: Path, reference_cost: float) -> str:
+    result = _load(results, "cost/decision_rules.json")
+    entries = result["alert_costs"]
+    reference = entries[f"{reference_cost:g}"]
+    labels = {
+        "default_threshold": "Probability threshold of 0.5 (first version)",
+        "cost_optimal_threshold": "Cost-optimal probability threshold",
+        "expected_cost": "Expected-cost rule (probability x amount > alert cost)",
+    }
+    rows = [
+        "| Decision rule | "
+        + " | ".join(f"Savings, alert cost {entry['alert_cost']:g}" for entry in entries.values())
+        + f" | Alerts per 100,000 (alert cost {reference_cost:g}) | Precision | Recall |",
+        "|---|" + "---|" * len(entries) + "---|---|---|",
+    ]
+    for rule, label in labels.items():
+        report = reference["rules"][rule]
+        rows.append(
+            f"| {label} | "
+            + " | ".join(f"{entry['rules'][rule]['savings']:.1%}" for entry in entries.values())
+            + f" | {report['alerts_per_100k']:.0f} | {report['precision']:.3f} "
+            f"| {report['recall']:.3f} |"
+        )
+    rows.append(
+        "| Oracle (upper bound) | "
+        + " | ".join(f"{entry['oracle']['savings']:.1%}" for entry in entries.values())
+        + " | | | |"
+    )
+    return "\n".join(rows)
+
+
 def replace_block(text: str, name: str, content: str) -> str:
     pattern = re.compile(rf"(<!-- BEGIN:{name} -->\n).*?(<!-- END:{name} -->)", flags=re.DOTALL)
     if not pattern.search(text):
@@ -150,6 +181,7 @@ def main() -> None:
         ("imbalance", imbalance_table(results, family)),
         ("calibration", calibration_table(results, family)),
         ("behavioural", behavioural_table(results)),
+        ("costs", cost_table(results, config.cost.alert_cost)),
     ):
         text = replace_block(text, name, content)
     readme.write_text(text, encoding="utf-8")
