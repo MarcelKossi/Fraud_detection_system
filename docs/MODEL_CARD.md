@@ -11,9 +11,9 @@ The tables of this document are generated from `results/` by `scripts/update_rea
 | Classifier | Gradient-boosted trees (XGBoost), 500 trees of depth 4; hyper-parameters in `configs/config.yaml` |
 | Calibration | Sigmoid (Platt scaling), fitted on data withheld from the classifier |
 | Decision rule | Alert when probability × amount exceeds the handling cost of an alert (10 by default) |
-| Explanation | Exact Shapley contributions (TreeSHAP) on the calibrated log-odds scale |
+| Explanation | Shapley contributions (TreeSHAP), additive on the calibrated log-odds scale |
 | Files | `models/fraud_model/model.json` (XGBoost format) and `metadata.json`; no pickled object |
-| Provenance | Training commit, data checksum and library versions are recorded in `metadata.json` |
+| Provenance | Data checksum and library versions are recorded in `metadata.json`; the commit recorded is the one preceding the commit that added the training script |
 
 ## Intended use
 
@@ -42,9 +42,11 @@ trained on the first 80% of the transactions in chronological order: the classif
 ## Evaluation
 
 The model was selected by expanding-window cross-validation on its training period and
-evaluated once on the last 20% of the transactions (56,745 transactions, 74 frauds). It
-is compared with the model of the first version of the project on the same
-transactions. Intervals are 95% bootstrap intervals.
+evaluated once on the last 20% of the transactions (56,745 transactions, 74 frauds,
+covering 7.7 hours). It is compared with the model of the first version of the project
+on the same transactions; that first version had been evaluated on them once before,
+at the start of the revision. Intervals are 95% bootstrap intervals over transactions;
+each system was trained with a single seed.
 
 <!-- BEGIN:final -->
 | System | AUPRC | Recall at FPR ≤ 0.1% | Savings, alert cost 10 | Alerts | Frauds flagged |
@@ -53,7 +55,7 @@ transactions. Intervals are 95% bootstrap intervals.
 | Retained model, threshold 0.5 | 0.803 [0.709, 0.883] | 0.797 [0.696, 0.887] | 57.8% [29.2%, 83.7%] | 57 | 73.0% |
 | Retained model, expected-cost rule | 0.803 [0.709, 0.883] | 0.797 [0.696, 0.887] | 58.2% [28.8%, 82.5%] | 77 | 29.7% |
 | Difference, last row minus first | +0.019 [-0.004, +0.046] | +0.000 [-0.038, +0.044] | +15.9% [-3.8%, +41.7%] | | |
-| Share of bootstrap resamples in which the last row is better | 94% | 38% | 90% | | |
+| Share of bootstrap resamples in which the last row is strictly better | 94% | 38% (ties counted as not better) | 90% | | |
 <!-- END:final -->
 
 <!-- BEGIN:final_sensitivity -->
@@ -71,14 +73,19 @@ alerts, under the cost model of the decision rule.
 ## Limitations
 
 - **Statistical power.** The evaluation set holds 74 frauds. The intervals are wide and
-  the improvement over the first version, although likely, is not established at the
-  95% level.
+  the improvement over the first version is not established: the intervals of the
+  differences include zero.
 - **Time span.** Two days of data: the model has not been exposed to weekly or seasonal
   patterns, nor to changes in fraud behaviour. Performance varied substantially between
   consecutive periods in cross-validation.
 - **Decision rule.** The rule ignores frauds whose amount is below the alert cost
   divided by their probability; on the evaluation set it flags about three frauds in
-  ten. It values each transaction in isolation and relies on assumed costs.
+  ten, and fewer than three of its alerts in ten are frauds. Its advantage over a
+  probability threshold of 0.5, estimated in cross-validation, was not reproduced on
+  the evaluation set at alert costs of 5 and 10. It values each transaction in
+  isolation and relies on assumed costs.
+- **Calibration.** In cross-validation the probabilities are slightly over-confident
+  above 0.001, most clearly between 0.2 and 0.5, the range in which the rule decides.
 - **Features.** No customer or merchant history is available in this dataset.
   Behavioural features were studied on simulated data only.
 - **Explanations.** They name anonymised components and describe the model, not the

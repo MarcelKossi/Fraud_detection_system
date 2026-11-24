@@ -1,0 +1,178 @@
+{
+  "experiment": "model_comparison",
+  "retained": {
+    "family": "xgboost",
+    "auprc": 0.7802791639695292
+  },
+  "reference": {
+    "family": "random_forest",
+    "auprc": 0.7570726494227424
+  },
+  "difference": {
+    "value": 0.023206514546786794,
+    "ci": [
+      0.004319303317100025,
+      0.041437611268161846
+    ],
+    "share_positive": 0.993
+  },
+  "difference_per_period": [
+    0.008094725845281259,
+    0.05098011999064567,
+    0.009316324894739436,
+    0.024434887456480037
+  ],
+  "reference_seed_std_per_period": [
+    0.0017551120893173906,
+    0.021272399019589484,
+    0.011375745713177437,
+    0.004911052156140129
+  ],
+  "retained_seed_std_per_period": [
+    0.0033677085923108697,
+    0.004685552673801354,
+    0.0025198692153849778,
+    0.004398036083728233
+  ],
+  "wins_over_seed_pairs_per_period": [
+    25,
+    25,
+    16,
+    25
+  ],
+  "seed_pairs_per_period": 25,
+  "n_resamples": 1000,
+  "confidence_level": 0.95,
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "metadata": {
+    "timestamp_utc": "2026-11-24T23:14:51+00:00",
+    "git_commit": "e9b0e739aee15e291baaa61ab208123301fd2e0f",
+    "git_uncommitted_changes": true,
+    "code_sha256": "77931430242fcd7aa52aea37a1156b840d58306bdc73fc07518f20599e5329b6",
+    "data_sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+    "config": {
+      "seed": 42,
+      "data": {
+        "raw_path": "data/raw/creditcard.csv",
+        "sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+        "target": "Class",
+        "time_column": "Time"
+      },
+      "split": {
+        "test_fraction": 0.2,
+        "n_cv_folds": 4
+      },
+      "evaluation": {
+        "threshold": 0.5,
+        "max_fpr": 0.001,
+        "bootstrap_resamples": 1000,
+        "confidence_level": 0.95
+      },
+      "baseline_model": {
+        "n_estimators": 100
+      },
+      "model_selection": {
+        "feature_set": "hour_of_day",
+        "n_trials": {
+          "logistic_regression": 20,
+          "lightgbm": 30,
+          "xgboost": 30
+        },
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "resampling_ratio": 0.1,
+        "calibration_fraction": 0.2
+      },
+      "selected_model": {
+        "family": "xgboost",
+        "imbalance": "none",
+        "calibration": "sigmoid",
+        "params": {
+          "colsample_bytree": 0.6210276357557503,
+          "learning_rate": 0.05967212083511124,
+          "max_depth": 4,
+          "min_child_weight": 1.9551434125044704,
+          "n_estimators": 500,
+          "reg_lambda": 8.182111518618424,
+          "subsample": 0.6838915663596266
+        }
+      },
+      "simulation": {
+        "n_customers": 5000,
+        "n_terminals": 10000,
+        "n_days": 183,
+        "start_date": "2018-04-01",
+        "radius": 5.0,
+        "seed": 0
+      },
+      "behavioural": {
+        "windows_days": [
+          1,
+          7,
+          30
+        ],
+        "delay_days": 7,
+        "test_fraction": 0.2,
+        "n_cv_folds": 4,
+        "seeds": [
+          0,
+          1,
+          2
+        ],
+        "feature_sets": {
+          "raw": [
+            "raw"
+          ],
+          "raw_calendar": [
+            "raw",
+            "calendar"
+          ],
+          "raw_customer": [
+            "raw",
+            "customer"
+          ],
+          "raw_terminal": [
+            "raw",
+            "terminal"
+          ],
+          "all": [
+            "raw",
+            "calendar",
+            "customer",
+            "terminal"
+          ]
+        }
+      },
+      "cost": {
+        "alert_cost": 10.0,
+        "sensitivity_alert_costs": [
+          5.0,
+          10.0,
+          25.0
+        ],
+        "amount_column": "Amount"
+      },
+      "model_dir": "models/fraud_model",
+      "results_dir": "results"
+    },
+    "environment": {
+      "python": "3.11.18",
+      "platform": "Linux-6.18.44-fc-v819-x86_64-with-glibc2.39",
+      "numpy": "2.4.3",
+      "pandas": "2.3.3",
+      "scikit-learn": "1.8.0",
+      "xgboost": "3.2.0"
+    }
+  }
+}

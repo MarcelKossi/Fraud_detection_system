@@ -15,10 +15,11 @@ split placed copies of test transactions in the training set and ignored chronol
 protocol based on a temporal hold-out set and expanding-window cross-validation is put
 in place, under which model families, imbalance treatments, calibration methods and
 decision rules are compared. The retained system, gradient-boosted trees with sigmoid
-calibration and a cost-based decision rule, is served by a validated API with exact
-explanations. On the hold-out set it improves on the first version in ranking quality
-and in cost, but the number of frauds available does not allow the improvement to be
-established at the 95% level.
+calibration and a cost-based decision rule, is served by an API with input validation
+and additive explanations. On the hold-out set its point estimates of ranking quality
+and of savings are higher than those of the first version, but the intervals of the
+differences include zero: with the number of frauds available, the improvement is not
+established.
 
 ## 1. Problem and data
 
@@ -37,7 +38,8 @@ over four periods. The primary metric is the area under the precision-recall cur
 complement it. Unit tests enforce the absence of leakage between partitions.
 
 Under the protocol of the first version, 344 test rows were copies of training rows.
-The same model evaluated under the temporal protocol loses recall and AUPRC:
+The same model has a lower recall and AUPRC on the temporal hold-out set, with
+overlapping intervals:
 
 <!-- BEGIN:protocol -->
 | Evaluation protocol | Frauds in test | Precision | Recall | F1 | AUPRC [95% CI] |
@@ -46,22 +48,49 @@ The same model evaluated under the temporal protocol loses recall and AUPRC:
 | Temporal hold-out, duplicates removed | 74 | 0.962 | 0.689 | 0.803 | 0.784 [0.689, 0.869] |
 <!-- END:protocol -->
 
+Repeating the random split with and without the duplicated rows separates the two
+defects:
+
+<!-- BEGIN:decomposition -->
+| Protocol | AUPRC, mean (std over splits) | Recall at 0.5, mean (std) | Test frauds also in training, mean |
+|---|---|---|---|
+| Random splits, duplicates kept (protocol of the first version) | 0.855 (0.032) | 0.794 (0.045) | 5.8 |
+| Random splits, duplicates removed | 0.817 (0.034) | 0.771 (0.034) | 0.0 |
+| Temporal folds, duplicates removed | 0.752 (0.073) | 0.692 (0.108) | 0 |
+<!-- END:decomposition -->
+
+Removing duplicates lowers the scores of the random splits by an amount comparable to
+their variation between splits. The gap to the temporal folds also includes the effect
+of their smaller training sets and of their particular periods.
+
 ## 3. Model selection
 
 <!-- BEGIN:models -->
-| Model | AUPRC, mean over seeds (std) | AUPRC per validation period | Recall at FPR ≤ 0.1% |
+| Model | AUPRC, mean over seeds (seed std) | AUPRC per validation period | Recall at FPR ≤ 0.1% |
 |---|---|---|---|
-| Random forest (first version) | 0.757 (0.007) | 0.804, 0.652, 0.811, 0.762 | 0.803 |
+| Random forest, default settings | 0.757 (0.007) | 0.804, 0.652, 0.811, 0.762 | 0.803 |
 | Logistic regression | 0.749 (0.000) | 0.741, 0.628, 0.859, 0.768 | 0.792 |
 | LightGBM | 0.778 (0.003) | 0.814, 0.697, 0.817, 0.786 | 0.803 |
 | XGBoost | 0.780 (0.002) | 0.812, 0.703, 0.820, 0.786 | 0.795 |
 <!-- END:models -->
 
-Gradient-boosted trees exceed the random forest in every validation period and for
-every seed, by a small margin. LightGBM and XGBoost are not distinguishable in
-accuracy; XGBoost is retained for its lower sensitivity to settings. No treatment of the
-class imbalance (class weighting, under-sampling, SMOTE) improves on the untreated
-model. Sigmoid calibration improves the probabilities without altering the ranking.
+Gradient-boosted trees exceed the untuned random forest on the seed-averaged AUPRC of
+every validation period, by a small margin whose uncertainty is given below. LightGBM
+and XGBoost are not distinguishable in accuracy; XGBoost is retained. Under the
+settings tested, no treatment of the class imbalance (class weighting, under-sampling,
+SMOTE) improves AUPRC. Sigmoid calibration lowers the Brier score without altering the
+ranking; the calibrated probabilities remain slightly over-confident.
+
+<!-- BEGIN:model_comparison -->
+| Quantity | Value |
+|---|---|
+| Mean AUPRC, retained model | 0.780 |
+| Mean AUPRC, random forest | 0.757 |
+| Difference, with 95% paired bootstrap interval | +0.023 [+0.004, +0.041] |
+| Share of resamples in which the difference is positive | 99% |
+| Difference in each validation period | +0.008, +0.051, +0.009, +0.024 |
+| Pairs of seeds won by the retained model, in each period | 25 of 25, 25 of 25, 16 of 25, 25 of 25 |
+<!-- END:model_comparison -->
 
 ## 4. Decision rule
 
@@ -78,8 +107,19 @@ model alerts when probability × amount exceeds the alert cost.
 | Oracle (upper bound) | 97.6% | 95.7% | 90.4% | | | |
 <!-- END:costs -->
 
-In cross-validation this rule gives the highest savings. A single cost-tuned threshold
-cannot be estimated reliably with the number of frauds available.
+In cross-validation this rule gives the highest point estimate of savings. Its
+advantage over the threshold of 0.5 is established for an alert cost of 25 only:
+
+<!-- BEGIN:cost_intervals -->
+| Alert cost | Savings of the expected-cost rule minus savings of the threshold of 0.5 | 95% paired bootstrap interval | Share of resamples above zero |
+|---|---|---|---|
+| 5 | +5.0 points | [+0.2, +10.8] | 98% |
+| 10 | +3.2 points | [-0.5, +7.8] | 95% |
+| 25 | +6.0 points | [+3.0, +10.2] | 100% |
+<!-- END:cost_intervals -->
+
+A single cost-tuned threshold cannot be estimated reliably with the number of frauds
+available.
 
 ## 5. Behavioural features
 
@@ -89,12 +129,12 @@ implemented and tested on simulated transactions following the specification of 
 correctness.
 
 <!-- BEGIN:behavioural -->
-| Feature set | Features | AUPRC, mean over seeds (std) | Recall at FPR ≤ 0.1% | Recall, amount above threshold | Recall, compromised terminal | Recall, compromised customer |
+| Feature set | Features | AUPRC, mean over seeds (seed std) | Recall at FPR ≤ 0.1% | Recall, amount above threshold | Recall, compromised terminal | Recall, compromised customer |
 |---|---|---|---|---|---|---|
 | Amount and time of day | 3 | 0.164 (0.000) | 0.139 | 0.541 | 0.001 | 0.324 |
-| + calendar flags | 5 | 0.163 (0.000) | 0.139 | 0.545 | 0.001 | 0.324 |
-| + customer aggregates | 12 | 0.349 (0.000) | 0.323 | 0.976 | 0.002 | 0.819 |
-| + terminal aggregates | 9 | 0.590 (0.001) | 0.419 | 0.275 | 0.559 | 0.171 |
+| Amount, time of day and calendar flags | 5 | 0.163 (0.000) | 0.139 | 0.545 | 0.001 | 0.324 |
+| Amount, time of day and customer aggregates | 12 | 0.349 (0.000) | 0.323 | 0.976 | 0.002 | 0.819 |
+| Amount, time of day and terminal aggregates | 9 | 0.590 (0.001) | 0.419 | 0.275 | 0.559 | 0.171 |
 | All groups | 20 | 0.717 (0.003) | 0.618 | 0.684 | 0.578 | 0.682 |
 <!-- END:behavioural -->
 
@@ -113,7 +153,7 @@ hold-out set.
 | Retained model, threshold 0.5 | 0.803 [0.709, 0.883] | 0.797 [0.696, 0.887] | 57.8% [29.2%, 83.7%] | 57 | 73.0% |
 | Retained model, expected-cost rule | 0.803 [0.709, 0.883] | 0.797 [0.696, 0.887] | 58.2% [28.8%, 82.5%] | 77 | 29.7% |
 | Difference, last row minus first | +0.019 [-0.004, +0.046] | +0.000 [-0.038, +0.044] | +15.9% [-3.8%, +41.7%] | | |
-| Share of bootstrap resamples in which the last row is better | 94% | 38% | 90% | | |
+| Share of bootstrap resamples in which the last row is strictly better | 94% | 38% (ties counted as not better) | 90% | | |
 <!-- END:final -->
 
 <!-- BEGIN:final_sensitivity -->
@@ -127,19 +167,24 @@ hold-out set.
 
 ## 7. Discussion
 
-**Established.** The evaluation of the first version was biased upwards, by a mechanism
-that is identified and measured (duplicates across the split, absence of chronology).
-The pipeline is reproducible: every figure is produced by a script, stored with its
-provenance, and the leakage guards run in continuous integration.
+**Established.** The protocol of the first version placed copies of test transactions
+in its training set and did not respect chronology; both facts are verified on the
+data. In cross-validation, the tuned boosted model has a higher AUPRC than the untuned
+random forest (paired bootstrap interval excluding zero). The experiments are
+deterministic and their tables are generated from
+stored results; the leakage guards run in continuous integration.
 
-**Supported but not established.** The retained model ranks transactions better than
-the first version and reduces the cost of fraud; both effects have the expected sign,
-agree with cross-validation, and hold in most bootstrap resamples, but their 95%
-intervals include zero.
+**Not established.** The size of the bias of the first version: removing duplicates
+and respecting chronology both lower its scores, but the first effect is of the order
+of the variation between random splits, and the second is confounded with training-set
+size and with the period tested. That the retained model
+ranks transactions better than the first version and reduces the cost of fraud: the
+point estimates have the expected sign and agree with cross-validation, but their 95%
+intervals include zero, and each system was trained with a single seed.
 
-**Not confirmed.** The advantage of the expected-cost rule over a threshold of 0.5,
-observed in cross-validation, does not appear on the hold-out set for alert costs of 5
-and 10. On that set, the gain in savings comes from the model.
+**Not confirmed.** The advantage of the expected-cost rule over a threshold of 0.5 does
+not appear on the hold-out set for alert costs of 5 and 10, as the cross-validation
+intervals allowed. On that set, the difference in savings comes from the model.
 
 **Negative results.** Imbalance treatments, calendar features and the replacement of the
 elapsed time by the time of day bring no measurable gain. The recall at a low
@@ -151,5 +196,7 @@ The conclusions are bounded by the 74 frauds of the hold-out set and by the two 
 data. A dataset covering several months, with identifiers, would allow behavioural
 features to be evaluated on real transactions, drift to be studied, and differences
 between models to be resolved. The cost model values transactions in isolation and
-rests on assumed costs. The service is a prototype without authentication or
-monitoring. Deep tabular models and ensembles of the retained models were not explored.
+rests on assumed costs. The bootstrap intervals treat transactions as independent and
+do not include the variability of training. The result files produced before the
+review of the project record the commit that precedes their generating script. The
+service is a prototype without authentication or monitoring. Deep tabular models and ensembles of the retained models were not explored.

@@ -1,0 +1,252 @@
+{
+  "experiment": "protocol_decomposition",
+  "protocol": "random stratified splits, model and features of the first version",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "variants": {
+    "raw_file": {
+      "auprc_mean": 0.854754388117436,
+      "precision_mean": 0.9400589223765244,
+      "recall_mean": 0.7938775510204082,
+      "auprc_std": 0.031617192777719204,
+      "precision_std": 0.01663113044950285,
+      "recall_std": 0.04471204551062581,
+      "runs": [
+        {
+          "seed": 0,
+          "auprc": 0.8149298109829999,
+          "precision": 0.9466666666666667,
+          "recall": 0.7244897959183674,
+          "n_test_frauds": 98,
+          "test_rows_also_in_train": 319,
+          "test_frauds_also_in_train": 6
+        },
+        {
+          "seed": 1,
+          "auprc": 0.8934247637566232,
+          "precision": 0.9325842696629213,
+          "recall": 0.8469387755102041,
+          "n_test_frauds": 98,
+          "test_rows_also_in_train": 308,
+          "test_frauds_also_in_train": 6
+        },
+        {
+          "seed": 2,
+          "auprc": 0.8759166702752119,
+          "precision": 0.9186046511627907,
+          "recall": 0.8061224489795918,
+          "n_test_frauds": 98,
+          "test_rows_also_in_train": 321,
+          "test_frauds_also_in_train": 4
+        },
+        {
+          "seed": 3,
+          "auprc": 0.8563518302030217,
+          "precision": 0.9634146341463414,
+          "recall": 0.8061224489795918,
+          "n_test_frauds": 98,
+          "test_rows_also_in_train": 299,
+          "test_frauds_also_in_train": 4
+        },
+        {
+          "seed": 4,
+          "auprc": 0.8331488653693231,
+          "precision": 0.9390243902439024,
+          "recall": 0.7857142857142857,
+          "n_test_frauds": 98,
+          "test_rows_also_in_train": 326,
+          "test_frauds_also_in_train": 9
+        }
+      ]
+    },
+    "deduplicated_file": {
+      "auprc_mean": 0.8165079770432142,
+      "precision_mean": 0.9632579316977511,
+      "recall_mean": 0.7705263157894737,
+      "auprc_std": 0.033983107073513034,
+      "precision_std": 0.024861203660330674,
+      "recall_std": 0.0344324783869392,
+      "runs": [
+        {
+          "seed": 0,
+          "auprc": 0.8711998436261128,
+          "precision": 1.0,
+          "recall": 0.8105263157894737,
+          "n_test_frauds": 95,
+          "test_rows_also_in_train": 0,
+          "test_frauds_also_in_train": 0
+        },
+        {
+          "seed": 1,
+          "auprc": 0.7864470793085777,
+          "precision": 0.971830985915493,
+          "recall": 0.7263157894736842,
+          "n_test_frauds": 95,
+          "test_rows_also_in_train": 0,
+          "test_frauds_also_in_train": 0
+        },
+        {
+          "seed": 2,
+          "auprc": 0.8016889589269593,
+          "precision": 0.935064935064935,
+          "recall": 0.7578947368421053,
+          "n_test_frauds": 95,
+          "test_rows_also_in_train": 0,
+          "test_frauds_also_in_train": 0
+        },
+        {
+          "seed": 3,
+          "auprc": 0.7964889620088976,
+          "precision": 0.9473684210526315,
+          "recall": 0.7578947368421053,
+          "n_test_frauds": 95,
+          "test_rows_also_in_train": 0,
+          "test_frauds_also_in_train": 0
+        },
+        {
+          "seed": 4,
+          "auprc": 0.8267150413455232,
+          "precision": 0.9620253164556962,
+          "recall": 0.8,
+          "n_test_frauds": 95,
+          "test_rows_also_in_train": 0,
+          "test_frauds_also_in_train": 0
+        }
+      ]
+    }
+  },
+  "duplicate_effect": {
+    "auprc": 0.038246411074221776,
+    "recall": 0.02335123523093452
+  },
+  "metadata": {
+    "timestamp_utc": "2026-11-24T23:26:54+00:00",
+    "git_commit": "e9b0e739aee15e291baaa61ab208123301fd2e0f",
+    "git_uncommitted_changes": true,
+    "code_sha256": "77931430242fcd7aa52aea37a1156b840d58306bdc73fc07518f20599e5329b6",
+    "data_sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+    "config": {
+      "seed": 42,
+      "data": {
+        "raw_path": "data/raw/creditcard.csv",
+        "sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+        "target": "Class",
+        "time_column": "Time"
+      },
+      "split": {
+        "test_fraction": 0.2,
+        "n_cv_folds": 4
+      },
+      "evaluation": {
+        "threshold": 0.5,
+        "max_fpr": 0.001,
+        "bootstrap_resamples": 1000,
+        "confidence_level": 0.95
+      },
+      "baseline_model": {
+        "n_estimators": 100
+      },
+      "model_selection": {
+        "feature_set": "hour_of_day",
+        "n_trials": {
+          "logistic_regression": 20,
+          "lightgbm": 30,
+          "xgboost": 30
+        },
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "resampling_ratio": 0.1,
+        "calibration_fraction": 0.2
+      },
+      "selected_model": {
+        "family": "xgboost",
+        "imbalance": "none",
+        "calibration": "sigmoid",
+        "params": {
+          "colsample_bytree": 0.6210276357557503,
+          "learning_rate": 0.05967212083511124,
+          "max_depth": 4,
+          "min_child_weight": 1.9551434125044704,
+          "n_estimators": 500,
+          "reg_lambda": 8.182111518618424,
+          "subsample": 0.6838915663596266
+        }
+      },
+      "simulation": {
+        "n_customers": 5000,
+        "n_terminals": 10000,
+        "n_days": 183,
+        "start_date": "2018-04-01",
+        "radius": 5.0,
+        "seed": 0
+      },
+      "behavioural": {
+        "windows_days": [
+          1,
+          7,
+          30
+        ],
+        "delay_days": 7,
+        "test_fraction": 0.2,
+        "n_cv_folds": 4,
+        "seeds": [
+          0,
+          1,
+          2
+        ],
+        "feature_sets": {
+          "raw": [
+            "raw"
+          ],
+          "raw_calendar": [
+            "raw",
+            "calendar"
+          ],
+          "raw_customer": [
+            "raw",
+            "customer"
+          ],
+          "raw_terminal": [
+            "raw",
+            "terminal"
+          ],
+          "all": [
+            "raw",
+            "calendar",
+            "customer",
+            "terminal"
+          ]
+        }
+      },
+      "cost": {
+        "alert_cost": 10.0,
+        "sensitivity_alert_costs": [
+          5.0,
+          10.0,
+          25.0
+        ],
+        "amount_column": "Amount"
+      },
+      "model_dir": "models/fraud_model",
+      "results_dir": "results"
+    },
+    "environment": {
+      "python": "3.11.18",
+      "platform": "Linux-6.18.44-fc-v819-x86_64-with-glibc2.39",
+      "numpy": "2.4.3",
+      "pandas": "2.3.3",
+      "scikit-learn": "1.8.0",
+      "xgboost": "3.2.0"
+    }
+  }
+}

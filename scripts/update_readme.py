@@ -20,7 +20,7 @@ from pathlib import Path
 from fraud_detection.config import load_config
 
 FAMILY_LABELS = {
-    "random_forest": "Random forest (first version)",
+    "random_forest": "Random forest, default settings",
     "logistic_regression": "Logistic regression",
     "lightgbm": "LightGBM",
     "xgboost": "XGBoost",
@@ -61,7 +61,7 @@ def model_table(results: Path) -> str:
     imbalance = _load(results, "model_selection/imbalance.json")
     max_fpr = imbalance["metadata"]["config"]["evaluation"]["max_fpr"]
     rows = [
-        f"| Model | AUPRC, mean over seeds (std) | AUPRC per validation period "
+        f"| Model | AUPRC, mean over seeds (seed std) | AUPRC per validation period "
         f"| Recall at FPR ≤ {max_fpr:.1%} |",
         "|---|---|---|---|",
     ]
@@ -78,11 +78,14 @@ def model_table(results: Path) -> str:
 
 def imbalance_table(results: Path, family: str) -> str:
     strategies = _load(results, "model_selection/imbalance.json")["families"][family]["strategies"]
-    rows = ["| Imbalance treatment | AUPRC, mean over seeds (std) |", "|---|---|"]
+    rows = [
+        "| Imbalance treatment | AUPRC, mean over seeds (seed std) | Recall at low FPR |",
+        "|---|---|---|",
+    ]
     for strategy, summary in strategies.items():
         rows.append(
             f"| {TREATMENT_LABELS[strategy]} | {summary['auprc_mean']:.3f} "
-            f"({summary['auprc_seed_std']:.3f}) |"
+            f"({summary['auprc_seed_std']:.3f}) | {summary['recall_at_fpr_mean']:.3f} |"
         )
     return "\n".join(rows)
 
@@ -103,14 +106,14 @@ def behavioural_table(results: Path) -> str:
     max_fpr = result["metadata"]["config"]["evaluation"]["max_fpr"]
     labels = {
         "raw": "Amount and time of day",
-        "raw_calendar": "+ calendar flags",
-        "raw_customer": "+ customer aggregates",
-        "raw_terminal": "+ terminal aggregates",
+        "raw_calendar": "Amount, time of day and calendar flags",
+        "raw_customer": "Amount, time of day and customer aggregates",
+        "raw_terminal": "Amount, time of day and terminal aggregates",
         "all": "All groups",
     }
     scenarios = list(next(iter(result["feature_sets"].values()))["recall_by_scenario"])
     rows = [
-        "| Feature set | Features | AUPRC, mean over seeds (std) "
+        "| Feature set | Features | AUPRC, mean over seeds (seed std) "
         f"| Recall at FPR ≤ {max_fpr:.1%} | "
         + " | ".join(f"Recall, {name}" for name in scenarios)
         + " |",
@@ -213,8 +216,9 @@ def final_table(results: Path) -> str:
         f"| {_ci(difference['savings'], '.1%', signed=True)} | | |"
     )
     rows.append(
-        f"| Share of bootstrap resamples in which the last row is better "
-        f"| {share['auprc']:.0%} | {share['recall_at_fpr']:.0%} | {share['savings']:.0%} | | |"
+        f"| Share of bootstrap resamples in which the last row is strictly better "
+        f"| {share['auprc']:.0%} | {share['recall_at_fpr']:.0%} (ties counted as not better) "
+        f"| {share['savings']:.0%} | | |"
     )
     return "\n".join(rows)
 
@@ -237,7 +241,7 @@ def final_simulated_table(results: Path) -> str:
     simulated = _load(results, "final/holdout_evaluation.json")["simulated_dataset"]
     labels = {"raw": "Amount and time of day", "all": "All behavioural groups"}
     rows = [
-        "| Feature set | Features | AUPRC, mean over seeds (std) | Recall at low FPR |",
+        "| Feature set | Features | AUPRC, mean over seeds (seed std) | Recall at low FPR |",
         "|---|---|---|---|",
     ]
     for name, summary in simulated["feature_sets"].items():
@@ -245,6 +249,87 @@ def final_simulated_table(results: Path) -> str:
             f"| {labels[name]} | {summary['n_features']} | {summary['auprc_mean']:.3f} "
             f"({summary['auprc_seed_std']:.3f}) | {summary['recall_at_fpr_mean']:.3f} |"
         )
+    return "\n".join(rows)
+
+
+def cost_interval_table(results: Path) -> str:
+    entries = _load(results, "cost/decision_rules.json")["alert_costs"]
+    rows = [
+        "| Alert cost | Savings of the expected-cost rule minus savings of the threshold "
+        "of 0.5 | 95% paired bootstrap interval | Share of resamples above zero |",
+        "|---|---|---|---|",
+    ]
+    for entry in entries.values():
+        d = entry["expected_cost_minus_default_threshold"]
+        rows.append(
+            f"| {entry['alert_cost']:g} | {100 * d['value']:+.1f} points "
+            f"| [{100 * d['ci'][0]:+.1f}, {100 * d['ci'][1]:+.1f}] | {d['share_positive']:.0%} |"
+        )
+    return "\n".join(rows)
+
+
+def reliability_block(results: Path) -> str:
+    rows = [
+        "| Predicted probability | Predictions | Frauds | Mean predicted | Observed rate |",
+        "|---|---|---|---|---|",
+    ]
+    for row in _load(results, "cost/decision_rules.json")["reliability"]:
+        low, high = row["bin"]
+        rows.append(
+            f"| {low:g} to {high:g} | {row['n']:,} | {row['n_frauds']:,} "
+            f"| {row['mean_predicted']:.4f} | {row['observed_rate']:.4f} |"
+        )
+    return "\n".join(rows)
+
+
+def model_comparison_block(results: Path) -> str:
+    r = _load(results, "robustness/model_comparison.json")
+    d = r["difference"]
+    per_period = ", ".join(f"{v:+.3f}" for v in r["difference_per_period"])
+    wins = ", ".join(
+        f"{w} of {r['seed_pairs_per_period']}" for w in r["wins_over_seed_pairs_per_period"]
+    )
+    return "\n".join(
+        [
+            "| Quantity | Value |",
+            "|---|---|",
+            f"| Mean AUPRC, retained model | {r['retained']['auprc']:.3f} |",
+            f"| Mean AUPRC, random forest | {r['reference']['auprc']:.3f} |",
+            f"| Difference, with 95% paired bootstrap interval | {d['value']:+.3f} "
+            f"[{d['ci'][0]:+.3f}, {d['ci'][1]:+.3f}] |",
+            f"| Share of resamples in which the difference is positive "
+            f"| {d['share_positive']:.0%} |",
+            f"| Difference in each validation period | {per_period} |",
+            f"| Pairs of seeds won by the retained model, in each period | {wins} |",
+        ]
+    )
+
+
+def decomposition_block(results: Path) -> str:
+    r = _load(results, "robustness/protocol_decomposition.json")
+    cv = _load(results, "baseline/cv_development.json")["feature_sets"]["raw_time"]
+    labels = {
+        "raw_file": "Random splits, duplicates kept (protocol of the first version)",
+        "deduplicated_file": "Random splits, duplicates removed",
+    }
+    rows = [
+        "| Protocol | AUPRC, mean (std over splits) | Recall at 0.5, mean (std) "
+        "| Test frauds also in training, mean |",
+        "|---|---|---|---|",
+    ]
+    for name, v in r["variants"].items():
+        shared = sum(run["test_frauds_also_in_train"] for run in v["runs"]) / len(v["runs"])
+        rows.append(
+            f"| {labels[name]} | {v['auprc_mean']:.3f} ({v['auprc_std']:.3f}) "
+            f"| {v['recall_mean']:.3f} ({v['recall_std']:.3f}) | {shared:.1f} |"
+        )
+    recalls = [fold["at_threshold"]["recall"] for fold in cv["folds"]]
+    mean_recall = sum(recalls) / len(recalls)
+    std_recall = (sum((x - mean_recall) ** 2 for x in recalls) / (len(recalls) - 1)) ** 0.5
+    rows.append(
+        f"| Temporal folds, duplicates removed | {cv['auprc_mean']:.3f} "
+        f"({cv['auprc_std']:.3f}) | {mean_recall:.3f} ({std_recall:.3f}) | 0 |"
+    )
     return "\n".join(rows)
 
 
@@ -277,6 +362,10 @@ def main() -> None:
         "behavioural": lambda: behavioural_table(results),
         "costs": lambda: cost_table(results, config.cost.alert_cost),
         "attributions": lambda: attribution_table(results),
+        "cost_intervals": lambda: cost_interval_table(results),
+        "reliability": lambda: reliability_block(results),
+        "model_comparison": lambda: model_comparison_block(results),
+        "decomposition": lambda: decomposition_block(results),
         "final": lambda: final_table(results),
         "final_sensitivity": lambda: final_sensitivity_table(results),
         "final_simulated": lambda: final_simulated_table(results),

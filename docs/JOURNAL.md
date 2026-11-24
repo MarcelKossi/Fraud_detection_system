@@ -608,3 +608,119 @@ set. The discrepancy is reported as such in the README, the report and the model
 A dataset spanning several months with identifiers is the main requirement: it would
 provide the statistical power that is lacking here and allow behavioural features and
 drift to be studied on real transactions.
+
+---
+
+## 2026-11-25 — Step 8: critical review, corrections and additional checks
+
+### Objective
+
+Subject the whole project to a critical reading: check every claim of the documents
+against the result files, look for methodological and programming errors, and correct
+what does not hold. Earlier entries of this journal are left as written; this entry
+lists what they got wrong.
+
+### What was run
+
+```
+pytest -q
+python scripts/run_cost_analysis.py
+python scripts/run_robustness_checks.py
+python scripts/update_readme.py
+python scripts/make_figures.py
+```
+
+No leakage was found in the splits, the scaling, the calibration, the feature
+construction or the selection of hyper-parameters and thresholds. The cost analysis and
+the attribution analysis reproduce their stored results to the last digit.
+
+### Errors of reasoning found and corrected
+
+1. **Wrong yardstick for the decision rule (step 4, decision D3).** The advantage of
+   the expected-cost rule was compared with the standard deviation over training seeds.
+   The relevant uncertainty is the sampling of transactions: the ten largest frauds
+   carry 31% of the fraudulent amount of the validation periods. A paired bootstrap over
+   validation transactions gives a difference in savings of +5.0 points [+0.2, +10.8] at
+   an alert cost of 5, +3.2 [-0.5, +7.8] at 10 and +6.0 [+3.0, +10.2] at 25. The
+   advantage is established at 25 only. The result on the hold-out set (step 7) is
+   therefore not a surprise but what these intervals allow.
+2. **Overstated consistency of the model comparison (step 2, decision D2).** "On each
+   of the four periods and for each of the five seeds" holds for averages over seeds
+   and over periods only. Over pairs of seeds, the retained model wins 25, 25, 16 and 25
+   times out of 25 in the four periods. A paired bootstrap gives a cross-validated AUPRC
+   difference of +0.023 [+0.004, +0.041]: the gain is established in cross-validation,
+   for a tuned boosted model against an untuned random forest.
+3. **Unsupported robustness argument (D2).** The preference for XGBoost over LightGBM
+   rested on the worst of 30 configurations; the medians are equal. The choice is one
+   between equals.
+4. **Protocol effect stated as measured (steps 1 and 7).** The comparison of one random
+   split with one temporal hold-out set does not separate the protocol from the period.
+   Five random splits give an AUPRC of 0.855 (standard deviation 0.032) with duplicates
+   and 0.817 (0.034) without; the temporal folds give 0.752 (0.073). Both corrections
+   lower the scores, but the effect of duplicates is of the order of the variation
+   between splits, and the effect of chronology is confounded with training-set size
+   and period. The score published by the first version (0.873) lies within the range
+   of the random splits.
+5. **Shares of bootstrap resamples read as probabilities (step 7).** They are
+   conditional on one training run of each system. For the recall at a low
+   false-positive rate, the share counted ties as losses although the point difference
+   is zero.
+6. **Calibration (step 2).** Only the Brier score improves; the logarithmic loss is
+   unchanged. A reliability table shows probabilities slightly over-confident above
+   0.001, with a mean prediction of 0.33 for an observed rate of 0.23 between 0.2 and
+   0.5.
+7. **Imbalance treatments (step 2).** They were compared with hyper-parameters selected
+   without treatment and a single re-sampling ratio; class weighting and SMOTE give a
+   slightly higher recall at a low false-positive rate. The conclusion is limited to
+   AUPRC under these settings.
+8. **Minor statements.** "Necessary and sufficient" for terminal aggregates (step 3)
+   and the reading of the rank of the time of day (step 5) were not warranted. The
+   difference of -1.0 point quoted in step 7 is -1.1. "The cross-validated estimate was
+   not optimistic" (step 7) cannot be inferred from a single period.
+
+### Defects of the code and of the records, and their correction
+
+- **Provenance.** Every result file was written before its generating script was
+  committed: the commit recorded is the preceding one, with a flag for uncommitted
+  changes. A digest of the source files is now recorded with each result, and the
+  results of this step were produced from a committed tree. The earlier files keep
+  their original record until they are regenerated.
+- **Hold-out scores.** The final evaluation stored no per-transaction scores, so that
+  ties and rule-against-rule intervals cannot be computed without reading the hold-out
+  set again. The script now stores them; the stored evaluation predates this change and
+  was not repeated.
+- **Recall at a fixed false-positive rate** was computed on a simplified ROC curve,
+  which can understate it when scores are tied. All points are now used. The values
+  checked on the development folds are unchanged; those of the hold-out evaluation were
+  computed before the change.
+- **API.** Booleans and numeric strings were accepted as numbers, and absurd magnitudes
+  were scored. Inputs are now strict and bounded, and a complete explanation can be
+  requested. Six tests were added (101 in total).
+- **Configuration.** A setting that no code read was removed; the threshold of 0.5 is
+  read from the configuration.
+- **Container.** The image was built and checked for the first time by continuous
+  integration at commit `ef5e7f1`; the job succeeded.
+
+### What was added
+
+- Paired bootstrap intervals for the decision rules and for the model comparison.
+- Decomposition of the protocol of the first version over repeated random splits.
+- Reliability table of the calibrated probabilities.
+- Five figures, generated from the result files.
+
+### Revised conclusions
+
+- Established: the first protocol leaked duplicated rows and ignored chronology; in
+  cross-validation the tuned boosted model has a higher AUPRC than the untuned random
+  forest; the expected-cost rule saves more than a threshold of 0.5 at an alert cost of
+  25.
+- Not established: the size of the bias of the first protocol; the improvement of the
+  retained model over the first version on the hold-out set; the advantage of the
+  expected-cost rule at alert costs of 5 and 10.
+
+### Remaining weaknesses
+
+- Each system of the final comparison was trained with one seed.
+- The random forest was never tuned with the same budget as the boosted models.
+- Bootstrap intervals treat transactions as independent.
+- The hold-out set covers 7.7 hours.
