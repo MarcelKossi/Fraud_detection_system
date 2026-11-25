@@ -1,7 +1,7 @@
 """Draw the figures of the README from the files in ``results/``.
 
 No model is fitted and no data file is read: every figure is a rendering of numbers
-already stored in ``results/``. Figures are written to ``docs/figures/``.
+already stored in ``results/``. Figures are written to ``images/``.
 
 Usage::
 
@@ -305,7 +305,7 @@ def figure_attributions(results: Path, out_dir: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--config", default="configs/config.yaml")
-    parser.add_argument("--out", default="docs/figures")
+    parser.add_argument("--out", default="images")
     args = parser.parse_args()
 
     results = Path(load_config(args.config).results_dir)
