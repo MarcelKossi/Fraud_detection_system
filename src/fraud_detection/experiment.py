@@ -15,7 +15,6 @@ import pandas
 import sklearn
 import xgboost
 
-
 CODE_PATHS = ("src", "scripts", "configs", "api", "pyproject.toml", "requirements.lock")
 
 
