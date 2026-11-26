@@ -29,6 +29,10 @@ RAW_TIME_FIELD = "time_seconds"
 AMOUNT_FIELD = "Amount"
 
 
+class ModelLoadError(ValueError):
+    """Raised when a stored model is missing, unreadable or inconsistent."""
+
+
 def _sigmoid(x: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-x))
 
@@ -134,27 +138,60 @@ class FraudModel:
             "decision": {"rule": "expected_cost", "alert_cost": self.alert_cost},
             **self.metadata,
         }
-        with open(directory / METADATA_FILE, "w", encoding="utf-8") as handle:
+        with open(directory / METADATA_FILE, "w", encoding="utf-8", newline="\n") as handle:
             json.dump(document, handle, indent=2)
             handle.write("\n")
         return directory
 
     @classmethod
     def load(cls, directory: str | Path) -> FraudModel:
+        """Load a stored model and check that its parts are consistent.
+
+        Raises
+        ------
+        ModelLoadError
+            If a file is missing or unreadable, if the metadata lack a required entry,
+            or if the feature names of the metadata are not those of the classifier. A
+            model that loads is therefore able to serve predictions.
+        """
         directory = Path(directory)
-        with open(directory / METADATA_FILE, encoding="utf-8") as handle:
-            document = json.load(handle)
-        classifier = XGBClassifier()
-        classifier.load_model(directory / MODEL_FILE)
-        feature_names = document.pop("feature_names")
-        calibration = document.pop("calibration")
-        decision = document.pop("decision")
+        try:
+            with open(directory / METADATA_FILE, encoding="utf-8") as handle:
+                document = json.load(handle)
+            if not isinstance(document, dict):
+                raise ModelLoadError(f"{METADATA_FILE} must contain a JSON object")
+            feature_names = document.pop("feature_names")
+            calibration = document.pop("calibration")
+            decision = document.pop("decision")
+            slope = float(calibration["slope"])
+            intercept = float(calibration["intercept"])
+            alert_cost = float(decision["alert_cost"])
+            classifier = XGBClassifier()
+            classifier.load_model(directory / MODEL_FILE)
+            classifier_features = classifier.get_booster().feature_names
+        except ModelLoadError:
+            raise
+        except Exception as error:  # noqa: BLE001 - any failure means the model is unusable
+            raise ModelLoadError(
+                f"Cannot load a model from {directory}: {type(error).__name__}: {error}"
+            ) from error
+
+        if not isinstance(feature_names, list) or list(classifier_features or []) != feature_names:
+            raise ModelLoadError(
+                "The feature names of the metadata are not those of the classifier"
+            )
+        if not all(np.isfinite([slope, intercept, alert_cost])) or alert_cost <= 0:
+            raise ModelLoadError("Calibration coefficients and alert cost must be finite numbers")
+        if calibration.get("method") != "sigmoid" or decision.get("rule") != "expected_cost":
+            raise ModelLoadError(
+                "Only sigmoid calibration and the expected-cost rule are supported"
+            )
         return cls(
             classifier=classifier,
             feature_names=feature_names,
-            calibration_slope=float(calibration["slope"]),
-            calibration_intercept=float(calibration["intercept"]),
-            alert_cost=float(decision["alert_cost"]),
+            calibration_slope=slope,
+            calibration_intercept=intercept,
+            alert_cost=alert_cost,
             metadata=document,
         )
 

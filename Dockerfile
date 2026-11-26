@@ -14,9 +14,13 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# Exact versions of every dependency of the service, then the package itself.
+COPY requirements-api.lock ./
+RUN pip install -r requirements-api.lock
+
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install ".[api]"
+RUN pip install --no-deps .
 
 COPY api ./api
 COPY models/fraud_model ./models/fraud_model

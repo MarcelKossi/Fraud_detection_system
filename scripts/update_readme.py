@@ -378,7 +378,7 @@ def main() -> None:
         present = [name for name in blocks if f"<!-- BEGIN:{name} -->" in text]
         for name in present:
             text = replace_block(text, name, blocks[name]())
-        path.write_text(text, encoding="utf-8")
+        path.write_text(text, encoding="utf-8", newline="\n")
         print(f"{path}: {len(present)} blocks regenerated from {results}/")
 
 

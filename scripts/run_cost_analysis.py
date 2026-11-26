@@ -293,7 +293,7 @@ def write_summary(out_dir: Path) -> None:
             f"| {entry['oracle']['cost']:,.0f} | | | |"
         )
     lines.append("")
-    (out_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8")
+    (out_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8", newline="\n")
     print(f"Summary written to {out_dir / 'summary.md'}")
 
 
