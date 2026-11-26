@@ -6,7 +6,9 @@ Three experiments, each written to ``results/baseline/<name>.json``:
     Random stratified split on the raw file, exactly as in the first version.
 ``v1_temporal_holdout``
     Same model and features, trained on the development period of the de-duplicated
-    file and evaluated on the final temporal hold-out set.
+    file and evaluated on the final temporal hold-out set. This experiment reads the
+    hold-out set: it is skipped when its result file exists, and refuses to run if it
+    is requested explicitly in that case.
 ``cv_development``
     Expanding-window cross-validation restricted to the development period, for each
     feature set. The hold-out set is not read by this experiment.
@@ -27,7 +29,12 @@ import numpy as np
 
 from fraud_detection.config import Config, load_config
 from fraud_detection.data import load_raw, prepare, sha256_of_file
-from fraud_detection.experiment import run_metadata, write_result
+from fraud_detection.experiment import (
+    HoldoutAlreadyEvaluated,
+    require_unevaluated,
+    run_metadata,
+    write_result,
+)
 from fraud_detection.features import FEATURE_SETS, build_features
 from fraud_detection.metrics import evaluate_scores
 from fraud_detection.models import build_baseline
@@ -40,6 +47,8 @@ from fraud_detection.splits import (
 )
 
 EXPERIMENTS = ("v1_replication", "v1_temporal_holdout", "cv_development")
+# Experiments that read the temporal hold-out set: they are never repeated silently.
+READS_HOLDOUT = ("v1_temporal_holdout",)
 
 
 def _fit_and_score(config: Config, X_train, y_train, X_eval) -> np.ndarray:
@@ -188,7 +197,7 @@ def write_summary(out_dir: Path) -> None:
             f"Recall is reported at a false-positive rate of at most {max_fpr}.",
             "",
         ]
-    (out_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8")
+    (out_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8", newline="\n")
 
 
 def main() -> None:
@@ -211,6 +220,14 @@ def main() -> None:
         "cv_development": lambda: cv_development(config, prepared),
     }
     for name in selected:
+        if name in READS_HOLDOUT:
+            try:
+                require_unevaluated(out_dir / f"{name}.json")
+            except HoldoutAlreadyEvaluated as error:
+                if args.only:
+                    raise SystemExit(str(error)) from error
+                print(f"Skipping {name}: its result exists and it reads the hold-out set.")
+                continue
         print(f"Running {name} ...", flush=True)
         payload = {
             "experiment": name,

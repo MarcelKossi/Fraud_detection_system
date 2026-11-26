@@ -8,7 +8,14 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from fraud_detection.serving import AMOUNT_FIELD, RAW_TIME_FIELD, FraudModel, fit_fraud_model
+from fraud_detection.serving import (
+    AMOUNT_FIELD,
+    METADATA_FILE,
+    RAW_TIME_FIELD,
+    FraudModel,
+    ModelLoadError,
+    fit_fraud_model,
+)
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 SHIPPED_MODEL = REPOSITORY / "models" / "fraud_model"
@@ -48,12 +55,13 @@ def model(transactions) -> FraudModel:
 
 @pytest.fixture(scope="module")
 def client(model, tmp_path_factory):
+    from api.main import create_app
+
     directory = model.save(tmp_path_factory.mktemp("model"))
     with pytest.MonkeyPatch.context() as patch:
         patch.setenv("FRAUD_MODEL_DIR", str(directory))
-        from api.main import app
-
-        with TestClient(app) as test_client:
+        # A dedicated application: no state is shared with the other tests.
+        with TestClient(create_app()) as test_client:
             yield test_client
 
 
@@ -183,17 +191,91 @@ def test_non_finite_values_are_rejected(client, transactions):
     assert response.status_code == 422
 
 
-def test_service_without_model_reports_it(tmp_path):
-    with pytest.MonkeyPatch.context() as patch:
-        patch.setenv("FRAUD_MODEL_DIR", str(tmp_path / "absent"))
-        from api.main import app
+def _service_for(directory) -> TestClient:
+    from api.main import create_app
 
-        with TestClient(app) as test_client:
-            assert test_client.get("/health").json() == {
-                "status": "degraded",
-                "model_loaded": False,
-            }
-            assert test_client.get("/version").status_code == 503
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv("FRAUD_MODEL_DIR", str(directory))
+        client = TestClient(create_app())
+        client.__enter__()
+    return client
+
+
+def test_service_without_model_reports_it(tmp_path, transactions):
+    service = _service_for(tmp_path / "absent")
+    try:
+        health = service.get("/health")
+        assert health.status_code == 503
+        assert health.json() == {"status": "degraded", "model_loaded": False}
+        assert service.get("/version").status_code == 503
+        assert service.post("/predict", json=_payload(transactions)).status_code == 503
+    finally:
+        service.__exit__(None, None, None)
+
+
+def test_a_service_without_model_does_not_affect_another_one(client, tmp_path):
+    """Applications are independent: the order of the tests cannot matter."""
+    service = _service_for(tmp_path / "absent")
+    try:
+        assert service.get("/health").status_code == 503
+        assert client.get("/health").status_code == 200
+    finally:
+        service.__exit__(None, None, None)
+
+
+def _corrupt(model, tmp_path, change) -> None:
+    directory = model.save(tmp_path)
+    path = directory / METADATA_FILE
+    document = json.loads(path.read_text(encoding="utf-8"))
+    path.write_text(json.dumps(change(document)), encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda document: [],
+        lambda document: {k: v for k, v in document.items() if k != "calibration"},
+        lambda document: {**document, "feature_names": document["feature_names"][:-3]},
+        lambda document: {**document, "feature_names": document["feature_names"][::-1]},
+        lambda document: {**document, "calibration": {"method": "sigmoid", "slope": "abc"}},
+        lambda document: {**document, "decision": {"rule": "expected_cost", "alert_cost": 0}},
+    ],
+)
+def test_inconsistent_stored_models_are_refused_at_load(model, tmp_path, change):
+    _corrupt(model, tmp_path, change)
+    with pytest.raises(ModelLoadError):
+        FraudModel.load(tmp_path)
+    service = _service_for(tmp_path)
+    try:
+        assert service.get("/health").status_code == 503
+    finally:
+        service.__exit__(None, None, None)
+
+
+def test_missing_or_unreadable_files_are_refused_at_load(model, tmp_path):
+    with pytest.raises(ModelLoadError):
+        FraudModel.load(tmp_path / "absent")
+    directory = model.save(tmp_path)
+    (directory / "model.json").write_text("not a model", encoding="utf-8")
+    with pytest.raises(ModelLoadError):
+        FraudModel.load(directory)
+
+
+def test_metadata_cannot_override_the_entries_of_version(model, tmp_path):
+    _corrupt(model, tmp_path, lambda document: {**document, "api_version": "9.9.9"})
+    service = _service_for(tmp_path)
+    try:
+        from fraud_detection import __version__
+
+        assert service.get("/version").json()["api_version"] == __version__
+    finally:
+        service.__exit__(None, None, None)
+
+
+def test_example_request_of_the_readme_is_the_first_stored_example():
+    examples = json.loads((SHIPPED_MODEL / "examples.json").read_text(encoding="utf-8"))
+    request = json.loads((REPOSITORY / "examples" / "transaction.json").read_text(encoding="utf-8"))
+    assert request == examples[0]["transaction"]
 
 
 @pytest.mark.skipif(not SHIPPED_MODEL.exists(), reason="no model shipped with the repository")

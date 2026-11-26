@@ -7,7 +7,7 @@ name = "fraud-detection"
 version = "0.2.0"
 description = "Credit card fraud detection: reproducible training, evaluation and serving."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 authors = [{ name = "Tamplare Kossi" }]
 dependencies = [
     "numpy==2.4.3",

@@ -48,7 +48,7 @@ from fraud_detection.costs import (
     total_cost,
 )
 from fraud_detection.data import load_raw, prepare, sha256_of_file
-from fraud_detection.experiment import run_metadata, write_result
+from fraud_detection.experiment import require_unevaluated, run_metadata, write_result
 from fraud_detection.features import build_features
 from fraud_detection.metrics import auprc, evaluate_scores, recall_at_fpr
 from fraud_detection.models import build_baseline, build_model
@@ -277,11 +277,7 @@ def main() -> None:
 
     config = load_config(args.config)
     out_path = Path(config.results_dir) / "final" / "holdout_evaluation.json"
-    if out_path.exists():
-        raise SystemExit(
-            f"{out_path} already exists. The hold-out sets are meant to be evaluated once; "
-            "delete the file deliberately if a new evaluation is justified, and record why."
-        )
+    require_unevaluated(out_path)
 
     print("Main dataset ...", flush=True)
     main_dataset = evaluate_main_dataset(config)

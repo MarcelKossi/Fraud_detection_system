@@ -242,7 +242,7 @@ def write_summary(out_dir: Path, results_dir: Path) -> None:
                 f"({np.std(recalls, ddof=1):.3f}) | 0 |"
             )
         lines.append("")
-    (out_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8")
+    (out_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8", newline="\n")
     print(f"Summary written to {out_dir / 'summary.md'}")
 
 

@@ -126,7 +126,7 @@ def main() -> None:
 
     raw_fields = development.rename(columns={config.data.time_column: RAW_TIME_FIELD})
     examples = select_examples(model, raw_fields, config.data.target)
-    with open(Path(directory) / EXAMPLES_FILE, "w", encoding="utf-8") as handle:
+    with open(Path(directory) / EXAMPLES_FILE, "w", encoding="utf-8", newline="\n") as handle:
         json.dump(examples, handle, indent=2)
         handle.write("\n")
 

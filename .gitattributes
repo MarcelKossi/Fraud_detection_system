@@ -1,0 +1,6 @@
+# Text files are stored and checked out with LF line endings on every platform, so that
+# regenerated results, documents and code digests are identical on Windows and Linux.
+* text=auto eol=lf
+
+*.png binary
+*.ipynb text eol=lf

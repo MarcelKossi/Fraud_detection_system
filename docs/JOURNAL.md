@@ -724,3 +724,57 @@ the attribution analysis reproduce their stored results to the last digit.
 - The random forest was never tuned with the same budget as the boosted models.
 - Bootstrap intervals treat transactions as independent.
 - The hold-out set covers 7.7 hours.
+
+---
+
+## 2026-11-26 — Step 9: defects found by a cold reading of the repository
+
+### Objective
+
+Read the repository as a newcomer would: clone it, follow the README literally, run the
+short scripts, probe the service. Correct the defects that such a reading cannot miss.
+
+### What held
+
+Every script that was run again regenerated its committed result, the model file and
+the five figures identically, and the numbers of the documents matched the result
+files.
+
+### Defects corrected
+
+- **Hold-out set not protected in one script.** `scripts/run_baseline.py`, run without
+  argument as the README instructs, evaluated the model of the first version on the
+  hold-out set again. The README claimed that the final evaluation was protected. A
+  guard shared by the two scripts that read the hold-out set now skips or refuses the
+  evaluation when its result exists, and the README states its limits.
+- **Environment not reproducible.** Only six libraries were pinned. Two lock files now
+  fix every direct and transitive dependency, for the whole project and for the service
+  alone; continuous integration and the container image install from them. The Python
+  version is bounded to 3.11. The model file was regenerated in the locked environment
+  and is byte-identical.
+- **Example request not runnable.** The README referred to a file that was not in the
+  repository. The request is now stored in `examples/`, a test checks that it is the
+  first example stored with the model, and a PowerShell variant is given.
+- **Tests dependent on their order.** Two tests of the service shared one application
+  object; in another order one of them failed. The application is now built by a
+  factory and each test uses its own instance.
+- **Service started with an unusable model.** Metadata that were not a JSON object
+  crashed the start-up; metadata inconsistent with the classifier were accepted and
+  every prediction then failed. A stored model is now validated when it is loaded, and
+  the readiness endpoint returns 503 when no model is in service, so that the health
+  check of the container reflects the real state. Metadata can no longer override the
+  entries of the version endpoint.
+- **Line endings.** Result files and documents are written with LF line endings on
+  every platform, and a `.gitattributes` file enforces it, so that regenerating them on
+  Windows does not mark every file as modified.
+
+Thirteen tests were added (114 in total).
+
+### Known and not corrected in this step
+
+- The stored hold-out evaluation predates two changes described in step 8 (output of
+  the evaluation script, computation of the recall at a fixed false-positive rate), and
+  most result files predate the commit of their generating script. They are to be
+  regenerated from a clean tree.
+- Duplicated bootstrap code in three scripts; scripts that must be run from the root of
+  the repository; no Windows job nor formatting check in continuous integration.

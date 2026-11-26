@@ -15,6 +15,8 @@ import pandas
 import sklearn
 import xgboost
 
+CODE_PATHS = ("src", "scripts", "configs", "api", "pyproject.toml", "requirements.lock")
+
 
 def _git(*args: str) -> str | None:
     try:
@@ -51,7 +53,9 @@ def code_sha256(root: str | Path = ".") -> str | None:
 
 def run_metadata(config: dict[str, Any], data_sha256: str) -> dict[str, Any]:
     """Everything needed to trace a result back to its code, data and environment."""
-    status = _git("status", "--porcelain")
+    # Only the files that determine a result are considered: regenerated results,
+    # documents and figures do not make the code "uncommitted".
+    status = _git("status", "--porcelain", "--", *CODE_PATHS)
     return {
         "timestamp_utc": datetime.now(UTC).isoformat(timespec="seconds"),
         "git_commit": _git("rev-parse", "HEAD"),
@@ -74,7 +78,28 @@ def write_result(path: str | Path, payload: dict[str, Any]) -> Path:
     """Write a result file as indented JSON, creating parent directories as needed."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as handle:
+    # Line endings are fixed so that results are byte-identical on every platform.
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
         json.dump(payload, handle, indent=2)
         handle.write("\n")
     return path
+
+
+class HoldoutAlreadyEvaluated(RuntimeError):
+    """Raised when an experiment that reads a hold-out set already has a stored result."""
+
+
+def require_unevaluated(path: str | Path) -> None:
+    """Refuse to repeat an evaluation on a hold-out set.
+
+    A hold-out set gives an unbiased estimate only as long as no choice depends on it.
+    Every experiment that reads one calls this function with the path of its result
+    file, and stops if that file exists. Repeating the evaluation requires deleting the
+    file deliberately, and the reason belongs in the journal.
+    """
+    if Path(path).exists():
+        raise HoldoutAlreadyEvaluated(
+            f"{path} already exists. This experiment reads a hold-out set, which is meant "
+            "to be evaluated once; delete the file deliberately if a new evaluation is "
+            "justified, and record why."
+        )

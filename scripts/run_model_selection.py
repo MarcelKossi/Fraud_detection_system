@@ -272,7 +272,7 @@ def write_summary(out_dir: Path) -> None:
                     f"| {summary['auprc_mean']:.3f} |"
                 )
         lines.append("")
-    (out_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8")
+    (out_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8", newline="\n")
 
 
 def main() -> None:
