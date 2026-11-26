@@ -59,10 +59,10 @@
   "seed": 42,
   "training_period": "development set (hold-out set excluded)",
   "n_holdout_excluded": 56745,
-  "trained_at_utc": "2026-11-26T14:44:15+00:00",
-  "git_commit": "66c5b4151234aab3906663719986c3fe61536891",
+  "trained_at_utc": "2026-11-26T14:44:55+00:00",
+  "git_commit": "24abda55d64846d5e63863df6aba3f245efafaa8",
   "git_uncommitted_changes": false,
-  "code_sha256": "23cdc5b9d03380b3c3d0dd11d6351579ef4a7a13ab8990f71f651cf98a568447",
+  "code_sha256": "33446b83c66e53dbeb77badcda0833386863877c4e511d36ea665e2667269e9e",
   "data_sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
   "environment": {
     "python": "3.11.18",
