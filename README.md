@@ -609,7 +609,7 @@ the first version remains available under the tag `v0-legacy`.
 
 ## Author
 
-TAMPLARE K. Marcel
+Tamplare Kossi
 
 ## Purpose and terms of use
 

@@ -1,6 +1,6 @@
 # Credit card fraud detection: from an optimistic baseline to an evaluated prototype
 
-Technical report, version 2 of the project. TAMPLARE K. Marcel, November 2026.
+Technical report, version 2 of the project. Tamplare Kossi, November 2026.
 
 The tables of this report are generated from `results/` by `scripts/update_readme.py`.
 Detailed results are in the [README](../README.md), day-to-day observations in the
