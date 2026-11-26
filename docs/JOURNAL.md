@@ -275,7 +275,7 @@ first fold, trained on 22 days only, AUPRC with all features is 0.555 against 0.
   false-positive budget.
 - With raw features, only 54% of the transactions above the amount threshold are
   flagged, although a single rule on the amount would flag all of them. Inspection of
-  one fold shows that the model assigns them scores near 0.55, below those of some
+  one fold (not stored in `results/`) shows that the model assigns them scores near 0.55, below those of some
   legitimate transactions close to the threshold. The configuration retained in D2 draws
   about 62% of the features for each tree, that is a single feature when only three are
   available, and is strongly regularised: it under-fits the smallest feature sets.
@@ -437,3 +437,290 @@ The hold-out set is not read.
 ### Next
 
 Step 6: deployable prototype (single serialised pipeline, validated API, container).
+
+---
+
+## 2026-11-24 — Step 6: deployable prototype
+
+### Objective
+
+Turn the retained configuration into a model that can be served: one stored model, a
+validated API returning the probability, the decision and the explanation, a dashboard,
+and a container image.
+
+### What was run
+
+```
+python scripts/train_final_model.py
+pytest -q
+uvicorn api.main:app --port 8000
+python .github/scripts/check_service.py http://127.0.0.1:8000 models/fraud_model/examples.json
+```
+
+### What was built
+
+- **Stored model** (`models/fraud_model/`). The classifier is saved in the native JSON
+  format of XGBoost; calibration coefficients, decision rule, feature names and
+  provenance are saved in `metadata.json`. No pickled object is used: loading the model
+  cannot execute code and does not depend on the version of scikit-learn. A reload check
+  is part of the training script.
+- **Training**. XGBoost configuration of D2, on the development set only: classifier
+  fitted on the first 181,585 transactions (347 frauds), sigmoid calibrator on the next
+  45,396 (52 frauds). The hold-out set is excluded, so that this exact model can be
+  evaluated on it once in step 7. Calibration slope 0.956, intercept -0.102: the
+  classifier was already close to calibrated.
+- **API** (`api/`). `GET /health`, `GET /version`, `POST /predict`. A request names its
+  30 fields; missing, unknown, negative or non-finite values are rejected. The response
+  holds the calibrated probability, the expected-cost decision of D3 and, on request,
+  the contributions of the features on the calibrated log-odds scale.
+- **Dashboard** (`dashboard/`). Sends a transaction to the API and displays the result.
+- **Container** (`Dockerfile`). API and model without the experiment dependencies, which
+  were moved to an optional group of the package.
+- **Continuous integration**. A second job builds the image, starts the service and
+  checks it against the example transactions stored with the model.
+
+### Verification
+
+- 95 unit tests pass, 16 of them on the model in service and the API: round trip of the
+  stored model, independence from column order and from the day, decision rule,
+  additivity of the explanation, validation of requests, behaviour without a model.
+- The four examples stored with the model are reproduced by the running API to within
+  10⁻⁵.
+- The dashboard was exercised end to end against the running API with the testing
+  utility of Streamlit.
+- The container image could not be built in the environment where this step was carried
+  out; its first build is the one of continuous integration.
+
+### Defect found and corrected
+
+A request containing a non-finite number caused an internal error instead of a
+validation error: the default error handler echoes the submitted value, which cannot be
+encoded as JSON. The handler was replaced by one that reports the location and the
+nature of the error without echoing the input. A test covers this case.
+
+### Observation on the decision rule
+
+Among the examples stored with the model, a fraud of amount 1.00 receives a probability
+of 0.998 and raises no alert, because its expected loss is below the alert cost. This is
+the accepted consequence of D3; the probability remains available in the response for
+any other policy.
+
+### Limits
+
+- The API is deliberately left open, without authentication, for testing and
+  demonstration. It has no rate limiting, request logging nor monitoring of input drift.
+- The time field is the elapsed time of the dataset; only its value modulo 24 hours is
+  used, and the clock time of its origin is not documented by the dataset.
+- The performance of the stored model is known by cross-validation only until step 7.
+
+### Next
+
+Step 7: single evaluation of the stored model on the hold-out set, model card,
+technical report.
+
+---
+
+## 2026-11-25 — Step 7: final evaluation on the hold-out sets
+
+### Objective
+
+Measure once, on data that no choice has used, the model stored in step 6, and compare
+it with the first version of the project on the same transactions.
+
+### What was run
+
+```
+python scripts/evaluate_holdout.py
+python scripts/update_readme.py
+```
+
+The evaluation script was first exercised on development data only, with a substitute
+split, to rule out programming errors before the hold-out set was read. It was then run
+once. It refuses to run again while its result file exists. Results are in
+`results/final/holdout_evaluation.json`.
+
+### Protocol
+
+Main dataset: last 20% of the transactions (56,745 transactions, 74 frauds, fraudulent
+amount 7,728). Three systems are compared on these transactions: the first version
+(random forest with default settings, raw features, threshold 0.5, trained on the whole
+development period); the stored model with a threshold of 0.5; the stored model with
+the expected-cost rule of D3. Intervals are 95% percentile bootstrap intervals over
+1,000 resamples; differences are paired.
+
+Simulated dataset: retained configuration trained on the development period minus the
+seven-day label delay, evaluated on the hold-out period (358,837 transactions, 3,242
+frauds), three seeds.
+
+### Observations
+
+| System | AUPRC | Recall at FPR ≤ 0.1% | Savings, alert cost 10 | Alerts | Frauds flagged |
+|---|---|---|---|---|---|
+| First version | 0.784 [0.689, 0.869] | 0.797 | 42.4% [13.3%, 71.2%] | 53 | 68.9% |
+| Stored model, threshold 0.5 | 0.803 [0.709, 0.883] | 0.797 | 57.8% [29.2%, 83.7%] | 57 | 73.0% |
+| Stored model, expected-cost rule | 0.803 [0.709, 0.883] | 0.797 | 58.2% [28.8%, 82.5%] | 77 | 29.7% |
+
+- Difference between the stored model with the expected-cost rule and the first
+  version: AUPRC +0.019 [-0.004, +0.046], positive in 94% of the resamples; savings
+  +15.9 points [-3.8, +41.7], positive in 90% of the resamples; recall at a low
+  false-positive rate 0.000 [-0.038, +0.044].
+- Savings by alert cost (5, 10, 25): first version 45.8%, 42.4%, 32.1%; stored model
+  with threshold 0.5: 61.5%, 57.8%, 46.8%; with the expected-cost rule: 60.5%, 58.2%,
+  52.5%; oracle 97.1%, 95.0%, 89.7%.
+- Calibration of the stored model: Brier score 0.000369, logarithmic loss 0.00239.
+- Simulated data: AUPRC 0.166 with raw features and 0.773 with all behavioural
+  features (cross-validation: 0.164 and 0.717).
+
+### Interpretation
+
+- The AUPRC gain (+0.019) equals the one measured in cross-validation (about +0.02), and
+  the cross-validated estimate of the retained model (0.780) was not optimistic for
+  this period (0.803). The gain is nevertheless not established at the 95% level: the
+  interval of the difference includes zero.
+- Savings are higher by 15 to 20 points for the three alert costs, with intervals that
+  include zero. The fraudulent amount of the hold-out set is small (7,728) and
+  concentrated, which makes any cost comparison on it imprecise.
+- The advantage of the expected-cost rule over the threshold of 0.5, of 3 to 6 points
+  in cross-validation, is not confirmed: -1.0, +0.4 and +5.7 points for alert costs of
+  5, 10 and 25. On this set the gain over the first version comes from the model.
+- The expected-cost rule flags 30% of the frauds, against 73% for the threshold, for a
+  similar saving at an alert cost of 10: its benefit rests entirely on the amounts.
+- On simulated data, the effect of behavioural features is confirmed, and is larger
+  than in cross-validation with all features, consistent with the larger training set.
+
+### Decision
+
+D3 is left unchanged. The hold-out set does not confirm the advantage of the
+expected-cost rule, but it does not contradict it at the reference alert cost either,
+and revising a choice in the light of the hold-out set would turn it into a validation
+set. The discrepancy is reported as such in the README, the report and the model card.
+
+### What this project establishes
+
+- Established: the evaluation of the first version was biased upwards by an identified
+  mechanism; the present pipeline is reproducible and guarded against leakage.
+- Supported, not established: the retained model improves ranking and cost.
+- Not confirmed: the superiority of the expected-cost rule over a fixed threshold.
+- Negative: imbalance treatments, calendar features, time-of-day encoding.
+
+### Further work
+
+A dataset spanning several months with identifiers is the main requirement: it would
+provide the statistical power that is lacking here and allow behavioural features and
+drift to be studied on real transactions.
+
+---
+
+## 2026-11-25 — Step 8: critical review, corrections and additional checks
+
+### Objective
+
+Subject the whole project to a critical reading: check every claim of the documents
+against the result files, look for methodological and programming errors, and correct
+what does not hold. Earlier entries of this journal are left as written; this entry
+lists what they got wrong.
+
+### What was run
+
+```
+pytest -q
+python scripts/run_cost_analysis.py
+python scripts/run_robustness_checks.py
+python scripts/update_readme.py
+python scripts/make_figures.py
+```
+
+No leakage was found in the splits, the scaling, the calibration, the feature
+construction or the selection of hyper-parameters and thresholds. The cost analysis and
+the attribution analysis reproduce their stored results to the last digit.
+
+### Errors of reasoning found and corrected
+
+1. **Wrong yardstick for the decision rule (step 4, decision D3).** The advantage of
+   the expected-cost rule was compared with the standard deviation over training seeds.
+   The relevant uncertainty is the sampling of transactions: the ten largest frauds
+   carry 31% of the fraudulent amount of the validation periods. A paired bootstrap over
+   validation transactions gives a difference in savings of +5.0 points [+0.2, +10.8] at
+   an alert cost of 5, +3.2 [-0.5, +7.8] at 10 and +6.0 [+3.0, +10.2] at 25. The
+   advantage is established at 25 only. The result on the hold-out set (step 7) is
+   therefore not a surprise but what these intervals allow.
+2. **Overstated consistency of the model comparison (step 2, decision D2).** "On each
+   of the four periods and for each of the five seeds" holds for averages over seeds
+   and over periods only. Over pairs of seeds, the retained model wins 25, 25, 16 and 25
+   times out of 25 in the four periods. A paired bootstrap gives a cross-validated AUPRC
+   difference of +0.023 [+0.004, +0.041]: the gain is established in cross-validation,
+   for a tuned boosted model against an untuned random forest.
+3. **Unsupported robustness argument (D2).** The preference for XGBoost over LightGBM
+   rested on the worst of 30 configurations; the medians are equal. The choice is one
+   between equals.
+4. **Protocol effect stated as measured (steps 1 and 7).** The comparison of one random
+   split with one temporal hold-out set does not separate the protocol from the period.
+   Five random splits give an AUPRC of 0.855 (standard deviation 0.032) with duplicates
+   and 0.817 (0.034) without; the temporal folds give 0.752 (0.073). Both corrections
+   lower the scores, but the effect of duplicates is of the order of the variation
+   between splits, and the effect of chronology is confounded with training-set size
+   and period. The score published by the first version (0.873) lies within the range
+   of the random splits.
+5. **Shares of bootstrap resamples read as probabilities (step 7).** They are
+   conditional on one training run of each system. For the recall at a low
+   false-positive rate, the share counted ties as losses although the point difference
+   is zero.
+6. **Calibration (step 2).** Only the Brier score improves; the logarithmic loss is
+   unchanged. A reliability table shows probabilities slightly over-confident above
+   0.001, with a mean prediction of 0.33 for an observed rate of 0.23 between 0.2 and
+   0.5.
+7. **Imbalance treatments (step 2).** They were compared with hyper-parameters selected
+   without treatment and a single re-sampling ratio; class weighting and SMOTE give a
+   slightly higher recall at a low false-positive rate. The conclusion is limited to
+   AUPRC under these settings.
+8. **Minor statements.** "Necessary and sufficient" for terminal aggregates (step 3)
+   and the reading of the rank of the time of day (step 5) were not warranted. The
+   difference of -1.0 point quoted in step 7 is -1.1. "The cross-validated estimate was
+   not optimistic" (step 7) cannot be inferred from a single period.
+
+### Defects of the code and of the records, and their correction
+
+- **Provenance.** Every result file was written before its generating script was
+  committed: the commit recorded is the preceding one, with a flag for uncommitted
+  changes. A digest of the source files is now recorded with each result, and the
+  results of this step were produced from a committed tree. The earlier files keep
+  their original record until they are regenerated.
+- **Hold-out scores.** The final evaluation stored no per-transaction scores, so that
+  ties and rule-against-rule intervals cannot be computed without reading the hold-out
+  set again. The script now stores them; the stored evaluation predates this change and
+  was not repeated.
+- **Recall at a fixed false-positive rate** was computed on a simplified ROC curve,
+  which can understate it when scores are tied. All points are now used. The values
+  checked on the development folds are unchanged; those of the hold-out evaluation were
+  computed before the change.
+- **API.** Booleans and numeric strings were accepted as numbers, and absurd magnitudes
+  were scored. Inputs are now strict and bounded, and a complete explanation can be
+  requested. Six tests were added (101 in total).
+- **Configuration.** A setting that no code read was removed; the threshold of 0.5 is
+  read from the configuration.
+- **Container.** The image was built and checked for the first time by continuous
+  integration at commit `ef5e7f1`; the job succeeded.
+
+### What was added
+
+- Paired bootstrap intervals for the decision rules and for the model comparison.
+- Decomposition of the protocol of the first version over repeated random splits.
+- Reliability table of the calibrated probabilities.
+- Five figures, generated from the result files.
+
+### Revised conclusions
+
+- Established: the first protocol leaked duplicated rows and ignored chronology; in
+  cross-validation the tuned boosted model has a higher AUPRC than the untuned random
+  forest; the expected-cost rule saves more than a threshold of 0.5 at an alert cost of
+  25.
+- Not established: the size of the bias of the first protocol; the improvement of the
+  retained model over the first version on the hold-out set; the advantage of the
+  expected-cost rule at alert costs of 5 and 10.
+
+### Remaining weaknesses
+
+- Each system of the final comparison was trained with one seed.
+- The random forest was never tuned with the same budget as the boosted models.
+- Bootstrap intervals treat transactions as independent.
+- The hold-out set covers 7.7 hours.

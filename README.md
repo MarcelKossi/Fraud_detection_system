@@ -3,27 +3,29 @@
 Supervised detection of fraudulent card transactions on a highly imbalanced dataset
 (0.17% of frauds), evaluated under a protocol that respects the chronology of the
 transactions, with the aim of a deployable prototype: a trained and calibrated model,
-a validated REST API and an interactive dashboard.
+a REST API with input validation and an interactive dashboard.
 
-> **Status — version 2 in progress.** Steps 1 to 5 of the roadmap below are complete:
-> evaluation protocol, reference measurements, model selection, behavioural features,
-> cost-based decision rule and explanation of predictions.
-> The serving layer
-> (`api/`, `dashboard/`) still dates from the first version and is rewritten in step 6.
-> The first version is preserved under the tag `v0-legacy`.
+> **Status — version 2.** The seven steps of the roadmap are complete, including the
+> final evaluation on the hold-out set ([result 8](#8-final-evaluation-on-the-hold-out-set)).
+> A summary is given in the [technical report](docs/REPORT.md) and the model is
+> described in its [model card](docs/MODEL_CARD.md). The first version is preserved
+> under the tag `v0-legacy`.
+
+![AUPRC of the first version under two evaluation protocols and of the retained model on the hold-out set](docs/figures/evaluation.png)
 
 ## Contents
 
-1. [Results so far](#results-so-far)
+1. [Results](#results)
 2. [Method](#method)
-3. [Reproducing the results](#reproducing-the-results)
-4. [Repository layout](#repository-layout)
-5. [Roadmap](#roadmap)
-6. [Limitations](#limitations)
-7. [History](#history)
-8. [References](#references)
+3. [Prediction service](#prediction-service)
+4. [Reproducing the results](#reproducing-the-results)
+5. [Repository layout](#repository-layout)
+6. [Roadmap](#roadmap)
+7. [Limitations](#limitations)
+8. [History](#history)
+9. [References](#references)
 
-## Results so far
+## Results
 
 All tables below are generated from the files in `results/` by
 `scripts/update_readme.py`. The reasoning behind each choice is recorded in
@@ -34,7 +36,7 @@ All tables below are generated from the files in `results/` by
 
 The same model (random forest, 100 trees, default settings) is evaluated under the
 protocol of the first version and under a protocol that removes duplicated rows and
-tests on transactions strictly later than the training period.
+tests on transactions that follow the training period.
 
 <!-- BEGIN:protocol -->
 | Evaluation protocol | Frauds in test | Precision | Recall | F1 | AUPRC [95% CI] |
@@ -46,47 +48,90 @@ tests on transactions strictly later than the training period.
 Precision, recall and F1 are computed at a threshold of 0.5. Under the first protocol,
 344 test rows, 8 of them frauds, were exact copies of training rows, and the random
 split let the model train on transactions later than those it was tested on. The two
-test sets differ and their confidence intervals overlap: the comparison shows the
-direction of the bias rather than its exact size.
+test sets differ and their confidence intervals overlap, so this table alone does not
+separate the effect of the protocol from that of the test period.
 
-### 2. Gradient-boosted trees improve on the random forest by a small, consistent margin
+The two defects are separated below by repeating the random split five times, with and
+without the duplicated rows, and comparing with the temporal folds of the development
+set:
+
+<!-- BEGIN:decomposition -->
+| Protocol | AUPRC, mean (std over splits) | Recall at 0.5, mean (std) | Test frauds also in training, mean |
+|---|---|---|---|
+| Random splits, duplicates kept (protocol of the first version) | 0.855 (0.032) | 0.794 (0.045) | 5.8 |
+| Random splits, duplicates removed | 0.817 (0.034) | 0.771 (0.034) | 0.0 |
+| Temporal folds, duplicates removed | 0.752 (0.073) | 0.692 (0.108) | 0 |
+<!-- END:decomposition -->
+
+Removing the duplicated rows lowers the mean scores of the random splits, by an amount
+comparable to their variation from one split to another: with five splits, the
+direction is as expected but the size of the effect is not established. The score
+published by the first version lies within the range of these random splits. The
+further drop from the second row to the third reflects chronology, but also the smaller
+training sets of the temporal folds and the particular periods they cover; it cannot be
+attributed to chronology alone.
+
+### 2. Gradient-boosted trees have a slightly higher cross-validated AUPRC than the random forest
 
 Expanding-window cross-validation over four consecutive periods of the development set,
 five seeds, no imbalance treatment. The hold-out set is not used.
 
 <!-- BEGIN:models -->
-| Model | AUPRC, mean over seeds (std) | AUPRC per validation period | Recall at FPR ≤ 0.1% |
+| Model | AUPRC, mean over seeds (seed std) | AUPRC per validation period | Recall at FPR ≤ 0.1% |
 |---|---|---|---|
-| Random forest (first version) | 0.757 (0.007) | 0.804, 0.652, 0.811, 0.762 | 0.803 |
+| Random forest, default settings | 0.757 (0.007) | 0.804, 0.652, 0.811, 0.762 | 0.803 |
 | Logistic regression | 0.749 (0.000) | 0.741, 0.628, 0.859, 0.768 | 0.792 |
 | LightGBM | 0.778 (0.003) | 0.814, 0.697, 0.817, 0.786 | 0.803 |
 | XGBoost | 0.780 (0.002) | 0.812, 0.703, 0.820, 0.786 | 0.795 |
 <!-- END:models -->
 
-Both boosted models exceed the random forest on each of the four periods and for each of
-the five seeds. The two boosted models cannot be told apart on AUPRC, and no model
-improves the recall at a low false-positive rate. Performance differs far more between
-periods than between models, which bounds what this dataset can resolve.
+![Cross-validated AUPRC of each model family in each validation period](docs/figures/model_selection.png)
 
-XGBoost is retained. With equal accuracy, it proved the more robust of the two to its
-settings during the search (see decision D2).
+The random forest of this table uses the same features as the other models (time of
+day) and default settings; it was not tuned, unlike the three others. Both boosted
+models exceed it on the seed-averaged AUPRC of each period and on the period-averaged
+AUPRC of each seed, but not for every pair of seeds within a period. The two boosted
+models cannot be told apart on AUPRC, and no model improves the recall at a low
+false-positive rate. Performance differs far more between periods than between models.
 
-### 3. Correcting the class imbalance does not help
+A paired bootstrap over validation transactions gives the uncertainty of the difference
+between the retained model and the random forest that the spread over seeds does not
+show. Its interval excludes zero: in cross-validation, the tuned boosted model has a
+higher AUPRC than the untuned random forest.
+
+<!-- BEGIN:model_comparison -->
+| Quantity | Value |
+|---|---|
+| Mean AUPRC, retained model | 0.780 |
+| Mean AUPRC, random forest | 0.757 |
+| Difference, with 95% paired bootstrap interval | +0.023 [+0.004, +0.041] |
+| Share of resamples in which the difference is positive | 99% |
+| Difference in each validation period | +0.008, +0.051, +0.009, +0.024 |
+| Pairs of seeds won by the retained model, in each period | 25 of 25, 25 of 25, 16 of 25, 25 of 25 |
+<!-- END:model_comparison -->
+
+XGBoost is retained. The choice between the two boosted models is not based on
+accuracy, which is equal; the median of the 30 searched configurations is the same for
+both, and only the worst configurations of LightGBM fall lower (see decision D2).
+
+### 3. No imbalance treatment improves AUPRC under the settings tested
 
 <!-- BEGIN:imbalance -->
-| Imbalance treatment | AUPRC, mean over seeds (std) |
-|---|---|
-| None | 0.780 (0.002) |
-| Class weighting | 0.775 (0.001) |
-| Random under-sampling | 0.747 (0.008) |
-| SMOTE | 0.780 (0.002) |
+| Imbalance treatment | AUPRC, mean over seeds (seed std) | Recall at low FPR |
+|---|---|---|
+| None | 0.780 (0.002) | 0.795 |
+| Class weighting | 0.775 (0.001) | 0.804 |
+| Random under-sampling | 0.747 (0.008) | 0.787 |
+| SMOTE | 0.780 (0.002) | 0.802 |
 <!-- END:imbalance -->
 
-Treatments are applied to the training folds only. None of them improves on the
-untreated model; under-sampling discards information and lowers performance. The model
-is therefore trained on the original class proportions.
+Treatments are applied to the training folds only, with the hyper-parameters selected
+without treatment and a single re-sampling ratio; they were not tuned separately. Under
+these conditions none of them improves AUPRC, and under-sampling lowers it. Class
+weighting and SMOTE give a marginally higher recall at a low false-positive rate. The
+model is trained on the original class proportions.
 
-### 4. Sigmoid calibration improves the predicted probabilities
+### 4. Sigmoid calibration lowers the Brier score; probabilities remain slightly over-confident
 
 <!-- BEGIN:calibration -->
 | Calibration | Brier score | Log loss | AUPRC |
@@ -98,10 +143,29 @@ is therefore trained on the original class proportions.
 
 The classifier is fitted on the first part of each training window and the calibrator on
 the last part. Sigmoid calibration lowers the Brier score without altering the ranking
-of the transactions. Isotonic calibration, fitted on a few tens of frauds, introduces
-ties that degrade the ranking.
+of the transactions; the logarithmic loss is unchanged. Isotonic calibration, fitted on
+a few tens of frauds, introduces ties that degrade the ranking.
 
-### 5. Behavioural features are decisive when card and terminal histories are available
+Reliability of the calibrated probabilities on the validation periods (predictions of
+the five seeds pooled):
+
+<!-- BEGIN:reliability -->
+| Predicted probability | Predictions | Frauds | Mean predicted | Observed rate |
+|---|---|---|---|---|
+| 0 to 0.001 | 867,575 | 153 | 0.0001 | 0.0002 |
+| 0.001 to 0.01 | 36,140 | 63 | 0.0025 | 0.0017 |
+| 0.01 to 0.1 | 2,639 | 58 | 0.0270 | 0.0220 |
+| 0.1 to 0.2 | 269 | 34 | 0.1404 | 0.1264 |
+| 0.2 to 0.5 | 244 | 57 | 0.3261 | 0.2336 |
+| 0.5 to 0.9 | 317 | 223 | 0.7345 | 0.7035 |
+| 0.9 to 1 | 736 | 697 | 0.9767 | 0.9470 |
+<!-- END:reliability -->
+
+Above 0.001 the mean predicted probability exceeds the observed fraud rate in every
+bin, most clearly between 0.2 and 0.5: the probabilities are somewhat over-confident in
+the range where the decision rule of result 6 operates.
+
+### 5. On simulated transactions, customer and terminal histories raise detection markedly
 
 The main dataset carries no identifier, so features describing the habits of a customer
 or the recent history of a terminal cannot be built on it. They are studied on simulated
@@ -111,19 +175,22 @@ model is cross-validated with each group of features; each training window ends 
 days before its validation period, the delay after which labels are assumed known.
 
 <!-- BEGIN:behavioural -->
-| Feature set | Features | AUPRC, mean over seeds (std) | Recall at FPR ≤ 0.1% | Recall, amount above threshold | Recall, compromised terminal | Recall, compromised customer |
+| Feature set | Features | AUPRC, mean over seeds (seed std) | Recall at FPR ≤ 0.1% | Recall, amount above threshold | Recall, compromised terminal | Recall, compromised customer |
 |---|---|---|---|---|---|---|
 | Amount and time of day | 3 | 0.164 (0.000) | 0.139 | 0.541 | 0.001 | 0.324 |
-| + calendar flags | 5 | 0.163 (0.000) | 0.139 | 0.545 | 0.001 | 0.324 |
-| + customer aggregates | 12 | 0.349 (0.000) | 0.323 | 0.976 | 0.002 | 0.819 |
-| + terminal aggregates | 9 | 0.590 (0.001) | 0.419 | 0.275 | 0.559 | 0.171 |
+| Amount, time of day and calendar flags | 5 | 0.163 (0.000) | 0.139 | 0.545 | 0.001 | 0.324 |
+| Amount, time of day and customer aggregates | 12 | 0.349 (0.000) | 0.323 | 0.976 | 0.002 | 0.819 |
+| Amount, time of day and terminal aggregates | 9 | 0.590 (0.001) | 0.419 | 0.275 | 0.559 | 0.171 |
 | All groups | 20 | 0.717 (0.003) | 0.618 | 0.684 | 0.578 | 0.682 |
 <!-- END:behavioural -->
+
+![Share of frauds flagged by fraud scenario and feature set on simulated transactions](docs/figures/behavioural.png)
 
 The last three columns give, for each fraud scenario, the share of frauds flagged at
 the same false-positive rate. Frauds on compromised terminals are invisible without the
 terminal history and more than half are caught with it; customer aggregates raise the
-detection of frauds on compromised customers. Calendar flags bring nothing. With all
+detection of frauds on compromised customers. Calendar flags bring nothing. Each row is
+a separate feature set, not a cumulative addition to the previous one. With all
 groups together, AUPRC is highest, but the detection of the first and third scenarios
 at this false-positive rate is lower than with customer aggregates alone.
 
@@ -134,7 +201,7 @@ real fraud. The hyper-parameters are those selected on the main dataset and were
 tuned again, which penalises the smallest feature sets. And the terminal risk is known
 with a seven-day delay, which bounds the detection of a terminal compromised for 28 days.
 
-### 6. Weighing each alert by the amount at stake lowers the cost of fraud
+### 6. A rule weighing probability by amount gives the highest estimated savings in cross-validation
 
 A probability must be turned into a decision. The decision rules below are compared
 under an explicit cost model: every alert costs a fixed handling cost, and a fraud that
@@ -153,9 +220,20 @@ those of the retained, calibrated model on the validation periods of the main da
 
 The expected-cost rule alerts when the probability of fraud multiplied by the amount
 exceeds the cost of an alert. It follows from the cost model, has no fitted parameter
-and gives the highest savings for the three alert costs considered, in every validation
-period for alert costs of 10 and 25 and in three periods out of four for an alert cost
-of 5. It does so by concentrating alerts on large amounts: it flags fewer frauds than a
+and gives the highest point estimate of savings for the three alert costs considered.
+The uncertainty of its advantage over the threshold of 0.5 is dominated by a few large
+fraudulent amounts, not by the training seed:
+
+<!-- BEGIN:cost_intervals -->
+| Alert cost | Savings of the expected-cost rule minus savings of the threshold of 0.5 | 95% paired bootstrap interval | Share of resamples above zero |
+|---|---|---|---|
+| 5 | +5.0 points | [+0.2, +10.8] | 98% |
+| 10 | +3.2 points | [-0.5, +7.8] | 95% |
+| 25 | +6.0 points | [+3.0, +10.2] | 100% |
+<!-- END:cost_intervals -->
+
+The advantage is established for an alert cost of 25, marginal for 5, and not
+established for the reference cost of 10. The rule concentrates alerts on large amounts: it flags fewer frauds than a
 threshold of 0.5 but the more expensive ones. A single probability threshold tuned for
 cost does not improve on 0.5; its value varies widely from one period to another. The
 expected-cost rule, with an alert cost of 10 that can be changed in the configuration,
@@ -167,13 +245,14 @@ the rule deliberately ignores most of them, whereas a small fraud may in practic
 precede larger ones on the same card. And the gap to the oracle remains large: the
 remaining cost comes from frauds to which the model assigns a low probability.
 
-### 7. Each prediction can be decomposed exactly into feature contributions
+### 7. Each prediction is decomposed additively into feature contributions
 
 Each prediction of the retained model is attributed to its input features by Shapley
-values, computed exactly for tree ensembles. For every transaction, the contributions
-and a base value add up to the log-odds predicted by the model (largest deviation
-observed: of the order of 10⁻⁵). The table gives the ten features with the largest mean
-absolute contribution over the validation periods.
+values, computed by the tree-specific algorithm of XGBoost. For every transaction, the
+contributions and a base value add up to the log-odds predicted by the model to within
+3 × 10⁻⁵. The table gives the ten features with the largest mean absolute contribution
+over the validation periods; these global figures come from the uncalibrated
+classifiers fitted in cross-validation, not from the model in service.
 
 <!-- BEGIN:attributions -->
 | Rank | Feature | Mean absolute contribution (log-odds) | Rank in each period |
@@ -190,6 +269,8 @@ absolute contribution over the validation periods.
 | 10 | `V26` | 0.265 | 5, 16, 17, 16 |
 <!-- END:attributions -->
 
+![Mean absolute contribution of the ten leading features, overall and in each validation period](docs/figures/attributions.png)
+
 The four leading features keep their rank to within one position in every period, and
 the ranking is nearly identical from one seed to another. Beyond them the ranking is
 only moderately stable between periods: an explanation that rests on the lower-ranked
@@ -200,12 +281,77 @@ anonymised principal components, so an explanation names a component and not a
 property of the transaction that an analyst could act on. And a contribution describes
 how the model uses a feature; it is not evidence of what causes fraud.
 
-### Not yet available
+### 8. Final evaluation on the hold-out set
 
-The performance of the retained model on the hold-out set is deliberately not reported
-at this stage. It is measured once, at the end, so that no modelling choice can be
-influenced by it. The cross-validated scores above are those of the best configuration
-among those searched and are therefore slightly optimistic.
+The stored model was evaluated once on the last 20% of the transactions, which no
+modelling choice had used. This hold-out set covers the last 7.7 hours of the two days.
+The first version had already been evaluated on it once, at the very start of the
+revision and before any modelling choice, to measure the effect of the protocol
+(result 1). It is compared, on the same transactions, with the model and
+the decision rule of the first version (random forest with default settings, threshold
+of 0.5), trained on the same development period. The random forest is fitted on the
+whole development period, whereas the classifier of the retained model is fitted on its
+first 80%, the rest being reserved for calibration. Intervals are 95% percentile
+bootstrap intervals obtained by resampling transactions; those of the differences are
+paired. Resampling treats transactions as independent, which ignores their dependence
+in time and may make the intervals somewhat too narrow.
+
+<!-- BEGIN:final -->
+| System | AUPRC | Recall at FPR ≤ 0.1% | Savings, alert cost 10 | Alerts | Frauds flagged |
+|---|---|---|---|---|---|
+| First version: random forest, threshold 0.5 | 0.784 [0.689, 0.869] | 0.797 [0.689, 0.883] | 42.4% [13.3%, 71.2%] | 53 | 68.9% |
+| Retained model, threshold 0.5 | 0.803 [0.709, 0.883] | 0.797 [0.696, 0.887] | 57.8% [29.2%, 83.7%] | 57 | 73.0% |
+| Retained model, expected-cost rule | 0.803 [0.709, 0.883] | 0.797 [0.696, 0.887] | 58.2% [28.8%, 82.5%] | 77 | 29.7% |
+| Difference, last row minus first | +0.019 [-0.004, +0.046] | +0.000 [-0.038, +0.044] | +15.9% [-3.8%, +41.7%] | | |
+| Share of bootstrap resamples in which the last row is strictly better | 94% | 38% (ties counted as not better) | 90% | | |
+<!-- END:final -->
+
+Differences in savings are in percentage points. Savings for the three alert costs
+considered:
+
+<!-- BEGIN:final_sensitivity -->
+| System | Savings, alert cost 5 | Savings, alert cost 10 | Savings, alert cost 25 |
+|---|---|---|---|
+| First version: random forest, threshold 0.5 | 45.8% | 42.4% | 32.1% |
+| Retained model, threshold 0.5 | 61.5% | 57.8% | 46.8% |
+| Retained model, expected-cost rule | 60.5% | 58.2% | 52.5% |
+| Oracle (upper bound) | 97.1% | 95.0% | 89.7% |
+<!-- END:final_sensitivity -->
+
+![Savings of each decision rule in cross-validation and on the hold-out set](docs/figures/cost_rules.png)
+
+The cost-optimal threshold was not carried to the hold-out set. What these figures
+support, and what they do not:
+
+- **Ranking.** The point estimate of AUPRC is higher for the retained model, by a
+  margin close to the one measured in cross-validation, but the interval of the
+  difference includes zero: with 74 frauds, the improvement is not established. The
+  recall at a low false-positive rate is identical for the two systems.
+- **Cost.** The point estimates of savings are higher than those of the first version
+  for the three alert costs, but the interval of the difference is wide and includes
+  zero: the fraudulent amount of the hold-out set is concentrated in a few transactions.
+- **Training variability.** Each system was trained once, with one seed. The bootstrap
+  shares of the table are conditional on these two trained models and are not
+  probabilities that one method is better than the other.
+- **Decision rule.** On the hold-out set, the gain in savings comes from the model, not
+  from the rule: with a threshold of 0.5 the retained model saves about as much as with
+  the expected-cost rule for alert costs of 5 and 10, and less only for 25. The
+  advantage of the expected-cost rule observed in cross-validation (result 6) is
+  therefore not confirmed, which is compatible with the intervals of that result. The
+  rule is kept as decided before this evaluation, since changing it now would amount to
+  tuning on the hold-out set.
+- **Calibration.** The Brier score and the logarithmic loss of the stored model on the
+  hold-out set are given in `results/final/holdout_evaluation.json`.
+
+On the simulated transactions, the hold-out period confirms the cross-validated effect
+of behavioural features (result 5):
+
+<!-- BEGIN:final_simulated -->
+| Feature set | Features | AUPRC, mean over seeds (seed std) | Recall at low FPR |
+|---|---|---|---|
+| Amount and time of day | 3 | 0.166 (0.001) | 0.150 |
+| All behavioural groups | 20 | 0.773 (0.001) | 0.724 |
+<!-- END:final_simulated -->
 
 ## Method
 
@@ -240,6 +386,92 @@ model is validated on transactions older than its training data, that re-samplin
 never applied to validation data, and that no behavioural feature depends on later
 transactions or on labels younger than the label delay. They run in continuous integration on every push.
 
+## Prediction service
+
+The model in service is stored in `models/fraud_model/`: the classifier in the native
+JSON format of XGBoost and a metadata file holding the calibration coefficients, the
+decision rule and the provenance of the model. No pickled object is used. The model is
+trained on the development set only, and was evaluated once on the hold-out set
+(result 8).
+
+**API.**
+
+```bash
+pip install -e ".[api]"
+uvicorn api.main:app --port 8000
+```
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Liveness of the service and availability of the model |
+| `GET /version` | Provenance of the model: training data checksum, commit, calibration, decision rule |
+| `POST /predict` | Probability of fraud, decision and, on request, explanation for one transaction |
+| `GET /docs` | Interactive documentation |
+
+A request gives the 30 fields of a transaction by name (`time_seconds`, `amount`, `V1`
+to `V28`). Missing or unknown fields, values that are not numbers, non-finite values and
+values outside wide plausibility bounds are rejected with a 422 status. Example,
+abridged, for a fraud that belongs to the training data of the model:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/predict?explain=true&top_k=2" \
+     -H "Content-Type: application/json" -d @transaction.json
+```
+
+```json
+{
+  "fraud_probability": 0.9109,
+  "decision": {
+    "rule": "expected_cost",
+    "alert_cost": 10.0,
+    "expected_loss": 1648.49,
+    "alert": true
+  },
+  "model_version": "0.2.0",
+  "explanation": {
+    "scale": "log-odds",
+    "base_value": -5.886,
+    "prediction": 2.325,
+    "contributions": [
+      {"feature": "V14", "value": -3.738, "contribution": 1.661},
+      {"feature": "V12", "value": -6.998, "contribution": 1.573}
+    ],
+    "other_contributions": 4.977
+  }
+}
+```
+
+The contributions are expressed on the calibrated log-odds scale; with the base value,
+they add up to the log-odds of the returned probability.
+
+**Dashboard.**
+
+```bash
+pip install -e ".[dashboard]"
+streamlit run dashboard/streamlit_app.py
+```
+
+The dashboard sends a transaction to the API and displays the probability, the decision
+and the largest contributions. Four transactions of the development period, stored with
+the model, can be loaded as examples; one of them is a fraud of small amount that the
+decision rule deliberately does not flag.
+
+**Container.**
+
+```bash
+docker build -t fraud-detection-api .
+docker run -p 8000:8000 fraud-detection-api
+```
+
+The image contains the API and the model, without the experiment dependencies. It is
+built and checked against the stored examples in continuous integration.
+
+**Scope.** This is a prototype. The API is deliberately left open, without
+authentication, so that it can be tried freely for testing and demonstration; it must
+not be exposed as such to real transaction data. It also has no rate limiting, no
+request logging and no monitoring of input drift, all of which a production service
+requires.
+
 ## Reproducing the results
 
 Python 3.11 is required.
@@ -262,7 +494,18 @@ python scripts/run_model_selection.py   # results 2 to 4, about 35 minutes on 2 
 python scripts/run_behavioural_features.py   # result 5, about 25 minutes on 2 cores
 python scripts/run_cost_analysis.py          # result 6, about 2 minutes on 2 cores
 python scripts/run_explanations.py           # result 7, about 2 minutes on 2 cores
-python scripts/update_readme.py         # regenerate the tables of this file
+python scripts/run_robustness_checks.py      # intervals of results 1 and 2, about 30 minutes
+python scripts/train_final_model.py          # model in service, a few seconds
+```
+
+The final evaluation is deliberately protected against repetition:
+`scripts/evaluate_holdout.py` refuses to run while `results/final/holdout_evaluation.json`
+exists. To reproduce it, delete that file first.
+
+```bash
+python scripts/evaluate_holdout.py           # result 8, about 10 minutes on 2 cores
+python scripts/update_readme.py         # regenerate the tables of the documents
+python scripts/make_figures.py          # regenerate the figures
 ```
 
 Every experiment reads `configs/config.yaml` and writes a JSON file to `results/`
@@ -287,12 +530,17 @@ src/fraud_detection/       installable package
     behavioural.py         customer and terminal aggregates
     costs.py               cost model and decision rules
     explain.py             attribution of predictions to features
+    serving.py             deployable model: probability, decision, explanation
     experiment.py          provenance of results
 scripts/                   experiment entry points
 tests/                     unit tests
 results/                   metrics (JSON) and generated summaries
-docs/                      journal and decision log
-api/, dashboard/           serving layer of the first version (rewritten in step 6)
+docs/                      journal, decision log, model card, technical report
+docs/figures/              figures of this document, generated by scripts/make_figures.py
+models/fraud_model/        model in service, its metadata and example transactions
+api/                       REST API
+dashboard/                 Streamlit dashboard
+Dockerfile                 container image of the API
 notebooks/                 exploratory analysis of the first version
 ```
 
@@ -305,8 +553,8 @@ notebooks/                 exploratory analysis of the first version
 | 3 | Behavioural features on a dataset with card and terminal identifiers | Done |
 | 4 | Cost-based decision rule | Done |
 | 5 | Explanation of individual predictions | Done |
-| 6 | Deployable prototype: single pipeline, validated API, container | Planned |
-| 7 | Final evaluation on the hold-out set, model card, technical report | Planned |
+| 6 | Deployable prototype: serialised model, validated API, dashboard, container | Done |
+| 7 | Final evaluation on the hold-out set, model card, technical report | Done |
 
 ## Limitations
 
@@ -314,9 +562,18 @@ notebooks/                 exploratory analysis of the first version
   and the hold-out set contains 74 frauds only: confidence intervals are wide.
 - The features are anonymised principal components. They cannot be interpreted in
   business terms and do not allow aggregates per card or per merchant.
-- Differences between models below about 0.01 of AUPRC cannot be resolved with the
-  number of frauds available.
+- With the number of frauds available, the 95% interval of an AUPRC difference between
+  two models has a half-width of about 0.025 on the hold-out set: smaller differences
+  cannot be resolved.
+- The hold-out set covers 7.7 hours, a single evening.
+- The result files were written while their generating scripts were not yet committed:
+  the commit they record is the preceding one, with a flag for uncommitted changes. The
+  files produced since the review of the project also record a digest of the code.
 - The hyper-parameter search is limited to 30 random configurations per boosted model.
+- Exact duplicate rows are removed as artefacts. They are about ten times richer in
+  frauds than the rest of the file (19 of 1,081), so some may be genuine repeated
+  attempts; keeping them with a split that never separates copies is an alternative
+  that was not evaluated.
 - Behavioural features are evaluated on synthetic data only; their benefit on real
   transactions is not measured here.
 
@@ -352,7 +609,7 @@ the first version remains available under the tag `v0-legacy`.
 
 ## Author
 
-TAMPLARE K. Marcel
+Tamplare Kossi
 
 ## Purpose and terms of use
 

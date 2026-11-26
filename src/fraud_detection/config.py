@@ -67,7 +67,6 @@ class BehaviouralConfig:
 
 @dataclass(frozen=True)
 class CostConfig:
-    decision_rule: str
     alert_cost: float
     sensitivity_alert_costs: list[float]
     amount_column: str
@@ -85,6 +84,7 @@ class Config:
     simulation: SimulationConfig
     behavioural: BehaviouralConfig
     cost: CostConfig
+    model_dir: str
     results_dir: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -107,6 +107,7 @@ def load_config(path: str | Path) -> Config:
         simulation=SimulationConfig(**raw["simulation"]),
         behavioural=BehaviouralConfig(**raw["behavioural"]),
         cost=CostConfig(**raw["cost"]),
+        model_dir=str(raw["model_dir"]),
         results_dir=str(raw["results_dir"]),
     )
 
@@ -114,8 +115,6 @@ def load_config(path: str | Path) -> Config:
         raise ValueError("split.test_fraction must lie strictly between 0 and 1")
     if config.split.n_cv_folds < 2:
         raise ValueError("split.n_cv_folds must be at least 2")
-    if config.cost.decision_rule not in ("expected_cost", "threshold"):
-        raise ValueError("cost.decision_rule must be 'expected_cost' or 'threshold'")
     if not 0.0 < config.evaluation.confidence_level < 1.0:
         raise ValueError("evaluation.confidence_level must lie strictly between 0 and 1")
     return config

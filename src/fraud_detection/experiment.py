@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import platform
 import subprocess
@@ -12,6 +13,7 @@ from typing import Any
 import numpy
 import pandas
 import sklearn
+import xgboost
 
 
 def _git(*args: str) -> str | None:
@@ -24,6 +26,29 @@ def _git(*args: str) -> str | None:
     return completed.stdout.strip()
 
 
+def code_sha256(root: str | Path = ".") -> str | None:
+    """SHA-256 of the source files that determine a result.
+
+    Covers the package, the scripts and the configuration, in a fixed order. Unlike the
+    commit identifier, it identifies the code even when a result is produced from a
+    working tree with uncommitted changes.
+    """
+    root = Path(root)
+    files = sorted(
+        path
+        for pattern in ("src/fraud_detection/*.py", "scripts/*.py", "configs/*.yaml")
+        for path in root.glob(pattern)
+    )
+    if not files:
+        return None
+    digest = hashlib.sha256()
+    for path in files:
+        digest.update(path.relative_to(root).as_posix().encode())
+        # Line endings are normalised so that the digest is the same on every platform.
+        digest.update(path.read_bytes().replace(b"\r\n", b"\n"))
+    return digest.hexdigest()
+
+
 def run_metadata(config: dict[str, Any], data_sha256: str) -> dict[str, Any]:
     """Everything needed to trace a result back to its code, data and environment."""
     status = _git("status", "--porcelain")
@@ -31,6 +56,7 @@ def run_metadata(config: dict[str, Any], data_sha256: str) -> dict[str, Any]:
         "timestamp_utc": datetime.now(UTC).isoformat(timespec="seconds"),
         "git_commit": _git("rev-parse", "HEAD"),
         "git_uncommitted_changes": bool(status) if status is not None else None,
+        "code_sha256": code_sha256(),
         "data_sha256": data_sha256,
         "config": config,
         "environment": {
@@ -39,6 +65,7 @@ def run_metadata(config: dict[str, Any], data_sha256: str) -> dict[str, Any]:
             "numpy": numpy.__version__,
             "pandas": pandas.__version__,
             "scikit-learn": sklearn.__version__,
+            "xgboost": xgboost.__version__,
         },
     }
 

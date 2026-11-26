@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-from lightgbm import LGBMClassifier
 from sklearn.base import BaseEstimator
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -81,6 +80,8 @@ def build_model(
             **params, class_weight=class_weight, random_state=seed, n_jobs=-1
         )
     if family == "lightgbm":
+        from lightgbm import LGBMClassifier  # experiment-only dependency
+
         return LGBMClassifier(
             **params,
             scale_pos_weight=1.0 if pos_weight is None else pos_weight,

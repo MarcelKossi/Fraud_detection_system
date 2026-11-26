@@ -1,5 +1,5 @@
-# Single source of truth for data handling, splitting and evaluation.
-# Every experiment script reads this file; no value below is hard-coded elsewhere.
+# Settings of data handling, splitting, evaluation, model selection and serving.
+# Every experiment script reads this file.
 
 seed: 42
 
@@ -80,13 +80,12 @@ behavioural:
     all: [raw, calendar, customer, terminal]
 
 cost:
-  # Decision rule of the prediction service (decision D3): alert when
-  # probability x amount exceeds the alert cost.
-  decision_rule: expected_cost
-  # Handling cost of one alert, in the currency of the amounts.
+  # Handling cost of one alert, in the currency of the amounts. The prediction service
+  # alerts when probability x amount exceeds it (decision D3).
   alert_cost: 10.0
   # Alternative values used for the sensitivity analysis.
   sensitivity_alert_costs: [5.0, 10.0, 25.0]
   amount_column: Amount
 
+model_dir: models/fraud_model
 results_dir: results

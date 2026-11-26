@@ -74,8 +74,9 @@ repeated over five seeds (`results/model_selection/`). The hold-out set was not 
 (`configs/config.yaml`, section `selected_model`).
 
 **Evidence.** Mean AUPRC: random forest 0.757, logistic regression 0.749, LightGBM
-0.778, XGBoost 0.780. Both boosted models exceed the random forest on every validation
-period and for every seed. The difference between XGBoost and LightGBM (0.002) is within
+0.778, XGBoost 0.780. Both boosted models exceed the random forest on the seed-averaged
+AUPRC of every validation period and on the period-averaged AUPRC of every seed (see
+the notes of 2026-11-25 at the end of this document). The difference between XGBoost and LightGBM (0.002) is within
 seed-to-seed variability: accuracy does not separate them. XGBoost is preferred for its
 lower sensitivity to settings: over 30 searched configurations its AUPRC stays between
 0.686 and 0.783, against 0.588 to 0.781 for LightGBM, and it remains stable under class
@@ -151,3 +152,31 @@ detected.
 **Limits.** Each transaction is valued in isolation; a small fraud that precedes larger
 ones on the same card is not accounted for. The rule relies on the calibration of the
 probabilities.
+
+---
+
+## Notes added after the review of 2026-11-25
+
+These notes qualify the evidence quoted above. The decisions themselves are unchanged.
+
+**D2, model.** The statement that both boosted models exceed the random forest "on
+every validation period and for every seed" was inaccurate: it holds for averages over
+seeds and over periods, not for every pair of seeds within a period. The preference for
+XGBoost over LightGBM rests on the worst of 30 searched configurations only (0.686
+against 0.588); their medians are equal (0.767). The choice is one between equals. The
+uncertainty of the gain over the random forest is given by the paired bootstrap of
+`results/robustness/model_comparison.json`. The random forest was not tuned.
+
+**D2, imbalance.** The treatments were compared with the hyper-parameters selected
+without treatment and with a single re-sampling ratio. Class weighting and SMOTE give a
+slightly higher recall at a false-positive rate of 0.1% (0.804 and 0.802 against
+0.795).
+
+**D3.** The advantage of the expected-cost rule was first assessed against the
+standard deviation over training seeds, which is not the relevant source of
+uncertainty. A paired bootstrap over validation transactions gives, for the difference
+in savings with the threshold of 0.5: +5.0 points [+0.2, +10.8] at an alert cost of 5,
++3.2 points [-0.5, +7.8] at 10, and +6.0 points [+3.0, +10.2] at 25. The advantage is
+established at 25 only. On the hold-out set the differences are -1.1, +0.4 and +5.7
+points, which these intervals allow. The rule is kept because it follows from the cost
+model and has no fitted parameter, not because its advantage is demonstrated.
