@@ -16,6 +16,9 @@ import sklearn
 import xgboost
 
 
+CODE_PATHS = ("src", "scripts", "configs", "api", "pyproject.toml", "requirements.lock")
+
+
 def _git(*args: str) -> str | None:
     try:
         completed = subprocess.run(
@@ -51,7 +54,9 @@ def code_sha256(root: str | Path = ".") -> str | None:
 
 def run_metadata(config: dict[str, Any], data_sha256: str) -> dict[str, Any]:
     """Everything needed to trace a result back to its code, data and environment."""
-    status = _git("status", "--porcelain")
+    # Only the files that determine a result are considered: regenerated results,
+    # documents and figures do not make the code "uncommitted".
+    status = _git("status", "--porcelain", "--", *CODE_PATHS)
     return {
         "timestamp_utc": datetime.now(UTC).isoformat(timespec="seconds"),
         "git_commit": _git("rev-parse", "HEAD"),

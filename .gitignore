@@ -41,3 +41,6 @@ data/raw/*.csv
 # Local data (never committed)
 data/raw/*
 data/processed/
+
+# Per-transaction scores of the hold-out evaluation (derived from the data file)
+results/final/holdout_scores.npz
